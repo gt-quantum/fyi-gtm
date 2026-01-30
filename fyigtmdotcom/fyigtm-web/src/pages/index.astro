@@ -1,7 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import SortableToolsList from '../components/tools/SortableToolsList.jsx';
+import SearchableToolsList from '../components/tools/SearchableToolsList.jsx';
 import Sidebar from '../components/tools/Sidebar.jsx';
 import CategoryTabs from '../components/tools/CategoryTabs.jsx';
 
@@ -47,7 +47,7 @@ const categories = categoriesData.slice(0, 10);
     <!-- Main Content -->
     <div class="main-layout">
       <!-- Tools List with Sort Options -->
-      <SortableToolsList client:load tools={toolsData} defaultSort="newest" />
+      <SearchableToolsList client:load tools={toolsData} defaultSort="newest" />
 
       <!-- Sidebar -->
       <div class="sidebar-wrapper">
@@ -131,6 +131,7 @@ const categories = categoriesData.slice(0, 10);
     padding: 14px 60px 14px 48px;
     background: var(--color-background-secondary);
     border: 1px solid var(--color-border);
+    border-radius: 8px;
     font-size: 15px;
     color: var(--color-text);
     outline: none;
