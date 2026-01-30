@@ -8,18 +8,29 @@ import RunsHistory from './RunsHistory';
 import ToolConfigEditor from './ToolConfigEditor';
 import ToolDraftsManager from './ToolDraftsManager';
 
-const TABS = [
-  { id: 'config', label: 'Newsletter Config' },
-  { id: 'topics', label: 'Topics' },
-  { id: 'tech', label: 'Tech Backlog' },
-  { id: 'tips', label: 'Tips Backlog' },
-  { id: 'runs', label: 'Run History' },
-  { id: 'tool-config', label: 'Tool Config' },
-  { id: 'tool-drafts', label: 'Tool Drafts' },
-];
+const SECTIONS = {
+  newsletter: {
+    label: 'Newsletter',
+    tabs: [
+      { id: 'config', label: 'Config' },
+      { id: 'topics', label: 'Topics' },
+      { id: 'tech', label: 'Tech Backlog' },
+      { id: 'tips', label: 'Tips Backlog' },
+      { id: 'runs', label: 'Run History' },
+    ],
+  },
+  directory: {
+    label: 'Directory',
+    tabs: [
+      { id: 'tool-config', label: 'Config' },
+      { id: 'tool-drafts', label: 'Tool Drafts' },
+    ],
+  },
+};
 
 export default function AdminLayout() {
   const [token, setToken] = useState(null);
+  const [activeSection, setActiveSection] = useState('newsletter');
   const [activeTab, setActiveTab] = useState('config');
   const [checking, setChecking] = useState(true);
 
@@ -45,6 +56,12 @@ export default function AdminLayout() {
     setToken(null);
   };
 
+  const handleSectionChange = (sectionId) => {
+    setActiveSection(sectionId);
+    // Set to first tab of the new section
+    setActiveTab(SECTIONS[sectionId].tabs[0].id);
+  };
+
   if (checking) {
     return <div className="admin-loading">Loading...</div>;
   }
@@ -52,6 +69,8 @@ export default function AdminLayout() {
   if (!token) {
     return <LoginForm onLogin={setToken} />;
   }
+
+  const currentSection = SECTIONS[activeSection];
 
   const renderContent = () => {
     switch (activeTab) {
@@ -77,14 +96,28 @@ export default function AdminLayout() {
   return (
     <div className="admin-layout">
       <header className="admin-header">
-        <h1 className="admin-title">Newsletter Admin</h1>
+        <h1 className="admin-title">FYI GTM Admin</h1>
         <button className="logout-button" onClick={handleLogout}>
           Log Out
         </button>
       </header>
 
+      {/* Section Selector */}
+      <div className="admin-sections">
+        {Object.entries(SECTIONS).map(([sectionId, section]) => (
+          <button
+            key={sectionId}
+            className={`section-button ${activeSection === sectionId ? 'active' : ''}`}
+            onClick={() => handleSectionChange(sectionId)}
+          >
+            {section.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sub-tabs for current section */}
       <nav className="admin-tabs">
-        {TABS.map((tab) => (
+        {currentSection.tabs.map((tab) => (
           <button
             key={tab.id}
             className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
