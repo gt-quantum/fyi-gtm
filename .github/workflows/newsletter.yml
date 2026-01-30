@@ -28,8 +28,9 @@ jobs:
       - name: Run newsletter automation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          BEEHIIV_API_KEY: ${{ secrets.BEEHIIV_API_KEY }}
-          BEEHIIV_PUBLICATION_ID: ${{ secrets.BEEHIIV_PUBLICATION_ID }}
+          SENDER_API_KEY: ${{ secrets.SENDER_API_KEY }}
+          SENDER_REPLY_TO: ${{ secrets.SENDER_REPLY_TO }}
+          SENDER_FROM_NAME: ${{ secrets.SENDER_FROM_NAME }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m newsletter.main
