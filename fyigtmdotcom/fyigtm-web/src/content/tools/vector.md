@@ -11,6 +11,11 @@ featured: false
 dateAdded: "2026-01-30"
 priceNote: "Free tier available with limited integrations, paid plans for advanced features"
 description: "AI-powered contact-level advertising platform that identifies buyers and creates precise ad audiences from CRM and behavioral data."
+upvotes: 0
+comments: 0
+views: 0
+hasDeal: false
+isDiscontinued: false
 ---
 
 ## What is Vector?

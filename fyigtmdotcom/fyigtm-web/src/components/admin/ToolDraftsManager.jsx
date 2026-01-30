@@ -18,7 +18,7 @@ const COLUMNS = [
     render: (value) =>
       value ? (
         <a href={value} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
-          Link
+          {value}
         </a>
       ) : (
         '-'
