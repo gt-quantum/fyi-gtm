@@ -1,0 +1,110 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SortableToolsList from '../components/tools/SortableToolsList.jsx';
+import Sidebar from '../components/tools/Sidebar.jsx';
+
+const toolsEntries = await getCollection('tools');
+const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
+
+const discontinuedTools = toolsData.filter(tool => tool.isDiscontinued);
+---
+
+<BaseLayout title="Tool Archive - Discontinued Tools | FYI GTM">
+  <div class="container">
+    <header class="page-header">
+      <h1 class="page-title">Tool Archive</h1>
+      <p class="page-description">
+        A record of GTM tools that have been discontinued or acquired.
+      </p>
+    </header>
+
+    <div class="main-layout">
+      {discontinuedTools.length > 0 ? (
+        <SortableToolsList client:load tools={discontinuedTools} defaultSort="newest" />
+      ) : (
+        <div class="empty-state">
+          <div class="empty-icon">--</div>
+          <h2 class="empty-title">No archived tools yet</h2>
+          <p class="empty-text">All listed tools are currently active.</p>
+        </div>
+      )}
+
+      <div class="sidebar-wrapper">
+        <Sidebar client:load tools={toolsData} title="DEALS" />
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .page-description {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: 32px;
+    align-items: start;
+  }
+
+  .sidebar-wrapper {
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    border: 1px solid var(--color-border);
+    background: var(--color-background-secondary);
+  }
+
+  .empty-icon {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+  }
+
+  .empty-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .empty-text {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  @media (max-width: 968px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar-wrapper {
+      margin-top: 32px;
+    }
+  }
+</style>

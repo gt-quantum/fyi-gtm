@@ -1,0 +1,266 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SortableToolsList from '../components/tools/SortableToolsList.jsx';
+import Sidebar from '../components/tools/Sidebar.jsx';
+import CategoryTabs from '../components/tools/CategoryTabs.jsx';
+
+const toolsEntries = await getCollection('tools');
+const categoriesEntries = await getCollection('categories');
+
+const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
+const categoriesData = categoriesEntries.map(entry => ({ ...entry.data, slug: entry.slug })).sort((a, b) => a.order - b.order);
+
+const categories = categoriesData.slice(0, 10);
+---
+
+<BaseLayout title="GTM Tools Directory | FYI GTM">
+  <div class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+      <h1 class="hero-title">Go-to-market tools directory</h1>
+      <p class="hero-subtitle">
+        Discover {toolsData.length}+ tools and resources to accelerate your GTM strategy.
+      </p>
+    </section>
+
+    <!-- Search Bar -->
+    <div class="search-wrapper">
+      <div class="search-container">
+        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search GTM tools..."
+          class="search-input"
+          id="search-input"
+        />
+        <kbd class="search-kbd">K</kbd>
+      </div>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <CategoryTabs client:load categories={categories} activeCategory="all" />
+
+    <!-- Main Content -->
+    <div class="main-layout">
+      <!-- Tools List with Sort Options -->
+      <SortableToolsList client:load tools={toolsData} defaultSort="upvotes" />
+
+      <!-- Sidebar -->
+      <div class="sidebar-wrapper">
+        <Sidebar client:load tools={toolsData} title="DEALS" />
+      </div>
+    </div>
+
+    <!-- Newsletter CTA -->
+    <section class="newsletter-section">
+      <div class="newsletter-content">
+        <h2 class="newsletter-title">Stay ahead of the curve</h2>
+        <p class="newsletter-text">
+          Get the latest GTM tools and strategies delivered to your inbox weekly.
+        </p>
+        <form class="newsletter-form">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            class="newsletter-input"
+            required
+          />
+          <button type="submit" class="newsletter-button">
+            Subscribe
+          </button>
+        </form>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 32px 0 24px;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--color-text);
+    letter-spacing: -0.03em;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  /* Search */
+  .search-wrapper {
+    margin-bottom: 24px;
+  }
+
+  .search-container {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-muted);
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 14px 60px 14px 48px;
+    background: var(--color-background-secondary);
+    border: 1px solid var(--color-border);
+    font-size: 15px;
+    color: var(--color-text);
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .search-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .search-input:focus {
+    border-color: var(--color-text);
+    background: var(--color-background-tertiary);
+  }
+
+  .search-kbd {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px 8px;
+    background: var(--color-background-tertiary);
+    border: 1px solid var(--color-border);
+    font-size: 12px;
+    color: var(--color-text-muted);
+    font-family: inherit;
+  }
+
+  /* Main Layout */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: 32px;
+    align-items: start;
+  }
+
+  .sidebar-wrapper {
+  }
+
+  /* Newsletter */
+  .newsletter-section {
+    background: var(--color-background-secondary);
+    border: 1px solid var(--color-border);
+    padding: 48px;
+    margin-top: 64px;
+    text-align: center;
+    transition: border-color 0.2s ease;
+  }
+
+  .newsletter-section:hover {
+    border-color: var(--color-border-hover);
+  }
+
+  .newsletter-content {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .newsletter-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .newsletter-text {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0 0 24px;
+  }
+
+  .newsletter-form {
+    display: flex;
+    gap: 0;
+  }
+
+  .newsletter-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .newsletter-input:focus {
+    border-color: var(--color-text);
+  }
+
+  .newsletter-button {
+    padding: 12px 24px;
+    background-color: var(--color-text);
+    color: var(--color-background);
+    border: 1px solid var(--color-text);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .newsletter-button:hover {
+    background-color: transparent;
+    color: var(--color-text);
+  }
+
+  /* Responsive */
+  @media (max-width: 968px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar-wrapper {
+      margin-top: 32px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 1.75rem;
+    }
+
+    .newsletter-section {
+      padding: 32px 24px;
+    }
+
+    .newsletter-form {
+      flex-direction: column;
+      gap: 12px;
+    }
+  }
+</style>

@@ -1,0 +1,59 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CategoryCard from '../../components/ui/CategoryCard.jsx';
+
+const categoriesEntries = await getCollection('categories');
+const categoriesData = categoriesEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
+
+// Sort by order
+const categories = [...categoriesData].sort((a, b) => a.order - b.order);
+---
+
+<BaseLayout title="GTM Tool Categories | FYI GTM">
+  <div class="container">
+    <header class="page-header">
+      <h1 class="page-title">Categories</h1>
+      <p class="page-description">
+        Browse GTM tools by category. Find the right tools for your go-to-market strategy.
+      </p>
+    </header>
+
+    <div class="categories-grid">
+      {categories.map((category, index) => (
+        <CategoryCard client:load category={category} index={index} />
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+  }
+
+  .page-header {
+    margin-bottom: 32px;
+  }
+
+  .page-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .page-description {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+</style>

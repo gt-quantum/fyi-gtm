@@ -1,0 +1,319 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Submit a Tool | FYI GTM">
+  <div class="container">
+    <div class="submit-page">
+      <header class="page-header">
+        <h1 class="page-title">Submit Your GTM Tool</h1>
+        <p class="page-description">
+          Have a go-to-market tool you'd like to share with our community? Submit it below and
+          we'll review it for inclusion in our directory.
+        </p>
+      </header>
+
+      <form class="submit-form" id="submit-form">
+        <div class="form-section">
+          <h2 class="section-title">Basic Information</h2>
+
+          <div class="form-group">
+            <label for="tool-name" class="form-label">Tool Name *</label>
+            <input
+              type="text"
+              id="tool-name"
+              name="name"
+              placeholder="e.g., Outreach"
+              required
+              class="form-input"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="tool-url" class="form-label">Website URL *</label>
+            <input
+              type="url"
+              id="tool-url"
+              name="url"
+              placeholder="https://example.com"
+              required
+              class="form-input"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="tool-description" class="form-label">Short Description *</label>
+            <textarea
+              id="tool-description"
+              name="description"
+              placeholder="Describe what your tool does in 1-2 sentences..."
+              required
+              rows="3"
+              class="form-textarea"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2 class="section-title">Details</h2>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="tool-category" class="form-label">Category *</label>
+              <select id="tool-category" name="category" required class="form-select">
+                <option value="">Select a category</option>
+                <option value="sales-engagement">Sales Engagement</option>
+                <option value="marketing-automation">Marketing Automation</option>
+                <option value="crm">CRM</option>
+                <option value="analytics">Analytics</option>
+                <option value="content">Content</option>
+                <option value="email">Email</option>
+                <option value="social">Social Media</option>
+                <option value="seo">SEO</option>
+                <option value="advertising">Advertising</option>
+                <option value="data">Data & Enrichment</option>
+                <option value="productivity">Productivity</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="tool-pricing" class="form-label">Pricing Model *</label>
+              <select id="tool-pricing" name="pricing" required class="form-select">
+                <option value="">Select pricing</option>
+                <option value="free">Free</option>
+                <option value="freemium">Freemium</option>
+                <option value="paid">Paid</option>
+                <option value="trial">Free Trial</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="tool-price-note" class="form-label">Price Details (Optional)</label>
+            <input
+              type="text"
+              id="tool-price-note"
+              name="priceNote"
+              placeholder="e.g., Starting at $50/user/month"
+              class="form-input"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="tool-tags" class="form-label">Tags (Optional)</label>
+            <input
+              type="text"
+              id="tool-tags"
+              name="tags"
+              placeholder="e.g., sales, outreach, automation (comma separated)"
+              class="form-input"
+            />
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2 class="section-title">Contact Information</h2>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="contact-name" class="form-label">Your Name *</label>
+              <input
+                type="text"
+                id="contact-name"
+                name="contactName"
+                placeholder="Jane Smith"
+                required
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="contact-email" class="form-label">Email *</label>
+              <input
+                type="email"
+                id="contact-email"
+                name="contactEmail"
+                placeholder="jane@example.com"
+                required
+                class="form-input"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" name="newsletter" />
+              <span>Subscribe to our newsletter for updates</span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-button">
+          Submit Tool for Review
+        </button>
+
+        <p class="form-note">
+          Submissions are reviewed within 2-3 business days. We'll notify you via email
+          once your tool has been reviewed.
+        </p>
+      </form>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+  }
+
+  .submit-page {
+    padding: 24px 0;
+  }
+
+  .page-header {
+    margin-bottom: 40px;
+  }
+
+  .page-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--color-text);
+  }
+
+  .page-description {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .submit-form {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
+    padding: 32px;
+  }
+
+  .form-section {
+    margin-bottom: 32px;
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 20px;
+    color: var(--color-text);
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    margin-bottom: 8px;
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-background);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .form-input:focus,
+  .form-textarea:focus,
+  .form-select:focus {
+    border-color: var(--color-text);
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+  }
+
+  .form-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  .form-checkbox input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-text);
+  }
+
+  .submit-button {
+    width: 100%;
+    padding: 14px 24px;
+    background: var(--color-text);
+    color: var(--color-background);
+    border: 1px solid var(--color-text);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .submit-button:hover {
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .form-note {
+    margin-top: 16px;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    .submit-form {
+      padding: 24px;
+    }
+
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  document.getElementById('submit-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    alert('Thank you for your submission! We will review it shortly.');
+  });
+</script>

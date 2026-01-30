@@ -1,0 +1,143 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ToolListItem from '../../components/tools/ToolListItem.jsx';
+import Sidebar from '../../components/tools/Sidebar.jsx';
+import CategoryTabs from '../../components/tools/CategoryTabs.jsx';
+
+const toolsEntries = await getCollection('tools');
+const categoriesEntries = await getCollection('categories');
+
+const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
+const categoriesData = categoriesEntries.map(entry => ({ ...entry.data, slug: entry.slug })).sort((a, b) => a.order - b.order);
+
+// Sort by upvotes by default
+const allTools = [...toolsData].sort((a, b) => b.upvotes - a.upvotes);
+const categories = categoriesData.slice(0, 10);
+---
+
+<BaseLayout title="All GTM Tools | FYI GTM">
+  <div class="container">
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <a href="/" class="nav-tab active">All</a>
+      <a href="/new" class="nav-tab">New</a>
+      <a href="/featured" class="nav-tab">Featured</a>
+      <a href="/top" class="nav-tab">Top</a>
+      <a href="/deals" class="nav-tab">Deals</a>
+      <a href="/graveyard" class="nav-tab">Graveyard</a>
+    </nav>
+
+    <header class="page-header">
+      <h1 class="page-title">All GTM Tools</h1>
+      <p class="page-description">
+        Browse our complete collection of {allTools.length}+ go-to-market tools and services.
+      </p>
+    </header>
+
+    <!-- Category Filter Tabs -->
+    <CategoryTabs client:load categories={categories} activeCategory="all" />
+
+    <!-- Main Content -->
+    <div class="main-layout">
+      <div class="tools-list">
+        {allTools.map((tool, index) => (
+          <ToolListItem client:load tool={tool} index={index} />
+        ))}
+      </div>
+
+      <div class="sidebar-wrapper">
+        <Sidebar client:load tools={toolsData} title="DEALS" />
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+  }
+
+  /* Navigation Tabs */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-tab {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .nav-tab:hover {
+    color: var(--color-text);
+    background: var(--color-background-secondary);
+  }
+
+  .nav-tab.active {
+    color: var(--color-primary);
+    background: rgba(62, 52, 211, 0.1);
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .page-description {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  /* Main Layout */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: 32px;
+    align-items: start;
+  }
+
+  .tools-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sidebar-wrapper {
+  }
+
+  @media (max-width: 968px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar-wrapper {
+      margin-top: 32px;
+    }
+  }
+</style>

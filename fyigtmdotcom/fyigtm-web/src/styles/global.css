@@ -1,0 +1,291 @@
+/* ===== CSS RESET ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+input, button, textarea, select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ===== CSS VARIABLES - GRAYSCALE DESIGN ===== */
+:root {
+  /* Layout */
+  --header-height: 64px;
+  --container-max-width: 1200px;
+  --content-padding: 24px;
+  --sidebar-width: 300px;
+
+  /* Dark Theme (default) - Pure Grayscale */
+  --color-background: #0a0a0a;
+  --color-background-secondary: #141414;
+  --color-background-tertiary: #1f1f1f;
+  --color-text: #fafafa;
+  --color-text-muted: #a3a3a3;
+  --color-text-light: #737373;
+  --color-primary: #ffffff;
+  --color-primary-light: #e5e5e5;
+  --color-primary-rgb: 255, 255, 255;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-hover: rgba(255, 255, 255, 0.25);
+  --color-card-bg: #141414;
+  --color-card-bg-hover: #1f1f1f;
+  --color-card-border: rgba(255, 255, 255, 0.08);
+  --color-tag-bg: rgba(255, 255, 255, 0.08);
+  --color-tag-bg-hover: rgba(255, 255, 255, 0.15);
+  --color-success: #a3a3a3;
+  --color-warning: #737373;
+  --color-error: #525252;
+
+  /* Hover effects */
+  --hover-lift: translateY(-2px);
+  --hover-glow: 0 4px 20px rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] {
+  --color-background: #ffffff;
+  --color-background-secondary: #fafafa;
+  --color-background-tertiary: #f5f5f5;
+  --color-text: #0a0a0a;
+  --color-text-muted: #525252;
+  --color-text-light: #737373;
+  --color-primary: #0a0a0a;
+  --color-primary-light: #262626;
+  --color-primary-rgb: 10, 10, 10;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-border-hover: rgba(0, 0, 0, 0.2);
+  --color-card-bg: #ffffff;
+  --color-card-bg-hover: #fafafa;
+  --color-card-border: rgba(0, 0, 0, 0.06);
+  --color-tag-bg: rgba(0, 0, 0, 0.05);
+  --color-tag-bg-hover: rgba(0, 0, 0, 0.1);
+  --color-success: #525252;
+  --color-warning: #737373;
+  --color-error: #a3a3a3;
+
+  --hover-glow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===== TYPOGRAPHY ===== */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+
+p {
+  line-height: 1.6;
+}
+
+/* ===== LAYOUT ===== */
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--content-padding);
+}
+
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding-top: calc(var(--header-height) + 24px);
+  padding-bottom: 48px;
+}
+
+/* ===== BUTTONS - FLAT DESIGN ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 0;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--color-border);
+  position: relative;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-text);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s ease;
+}
+
+.btn:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.btn-primary {
+  background-color: var(--color-text);
+  color: var(--color-background);
+  border: 1px solid var(--color-text);
+}
+
+.btn-primary:hover {
+  background-color: transparent;
+  color: var(--color-text);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-background-secondary);
+  border-color: var(--color-border-hover);
+}
+
+/* ===== HOVER EFFECTS ===== */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: var(--hover-lift);
+  box-shadow: var(--hover-glow);
+}
+
+.hover-underline {
+  position: relative;
+}
+
+.hover-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--color-text);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s ease;
+}
+
+.hover-underline:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.hover-fade {
+  transition: opacity 0.2s ease;
+}
+
+.hover-fade:hover {
+  opacity: 0.7;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  :root {
+    --content-padding: 16px;
+    --header-height: 56px;
+  }
+
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+}
+
+/* ===== UTILITIES ===== */
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===== SCROLLBAR - MINIMAL ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ===== SELECTION ===== */
+::selection {
+  background: var(--color-text);
+  color: var(--color-background);
+}

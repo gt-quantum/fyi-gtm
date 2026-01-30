@@ -1,0 +1,75 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SortableToolsList from '../components/tools/SortableToolsList.jsx';
+import Sidebar from '../components/tools/Sidebar.jsx';
+
+const toolsEntries = await getCollection('tools');
+const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
+---
+
+<BaseLayout title="New GTM Tools | FYI GTM">
+  <div class="container">
+    <header class="page-header">
+      <h1 class="page-title">New GTM Tools</h1>
+      <p class="page-description">
+        The latest go-to-market tools added to our directory. Updated daily.
+      </p>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-layout">
+      <SortableToolsList client:load tools={toolsData} defaultSort="newest" />
+
+      <div class="sidebar-wrapper">
+        <Sidebar client:load tools={toolsData} title="DEALS" />
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .page-description {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  /* Main Layout */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: 32px;
+    align-items: start;
+  }
+
+  .sidebar-wrapper {
+  }
+
+  @media (max-width: 968px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar-wrapper {
+      margin-top: 32px;
+    }
+  }
+</style>
