@@ -9,6 +9,12 @@ def get_client():
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
+def get_newsletter_config(client) -> dict | None:
+    """Fetch the newsletter configuration/context."""
+    result = client.table("newsletter_config").select("*").limit(1).execute()
+    return result.data[0] if result.data else None
+
+
 def get_next_topic(client) -> dict | None:
     """
     Fetch the next available topic (highest priority, not yet used).
@@ -27,13 +33,60 @@ def get_next_topic(client) -> dict | None:
     return result.data[0] if result.data else None
 
 
-def create_run(client, topic_id: str) -> dict:
-    """Create a new newsletter run record."""
+def get_next_tech(client) -> dict | None:
+    """Fetch the next unused tech from the backlog."""
     result = (
-        client.table("newsletter_runs")
-        .insert({"topic_id": topic_id, "status": "pending"})
+        client.table("tech_backlog")
+        .select("*")
+        .is_("used_at", "null")
+        .order("created_at", desc=False)
+        .limit(1)
         .execute()
     )
+    return result.data[0] if result.data else None
+
+
+def get_next_tips(client, count: int = 2) -> list:
+    """Fetch the next unused tips from the backlog."""
+    result = (
+        client.table("tips_backlog")
+        .select("*")
+        .is_("used_at", "null")
+        .order("created_at", desc=False)
+        .limit(count)
+        .execute()
+    )
+    return result.data if result.data else []
+
+
+def mark_topic_used(client, topic_id: str):
+    """Mark a topic as used so it won't be selected again."""
+    client.table("newsletter_topics").update(
+        {"used_at": datetime.now(timezone.utc).isoformat()}
+    ).eq("id", topic_id).execute()
+
+
+def mark_tech_used(client, tech_id: str):
+    """Mark a tech item as used."""
+    client.table("tech_backlog").update(
+        {"used_at": datetime.now(timezone.utc).isoformat()}
+    ).eq("id", tech_id).execute()
+
+
+def mark_tips_used(client, tip_ids: list):
+    """Mark tips as used."""
+    for tip_id in tip_ids:
+        client.table("tips_backlog").update(
+            {"used_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", tip_id).execute()
+
+
+def create_run(client, topic_id: str = None) -> dict:
+    """Create a new newsletter run record."""
+    data = {"status": "pending"}
+    if topic_id:
+        data["topic_id"] = topic_id
+    result = client.table("newsletter_runs").insert(data).execute()
     return result.data[0]
 
 
@@ -46,13 +99,6 @@ def update_run(client, run_id: str, **updates) -> dict:
         .execute()
     )
     return result.data[0]
-
-
-def mark_topic_used(client, topic_id: str):
-    """Mark a topic as used so it won't be selected again."""
-    client.table("newsletter_topics").update(
-        {"used_at": datetime.now(timezone.utc).isoformat()}
-    ).eq("id", topic_id).execute()
 
 
 def complete_run(client, run_id: str, broadcast_id: str):

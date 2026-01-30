@@ -22,39 +22,100 @@ def call_with_retry(func, max_retries=3):
             time.sleep(wait_time)
 
 
-def generate_newsletter(client, topic: str, guidance: str | None = None) -> str:
+def build_context_section(config: dict | None) -> str:
+    """Build the newsletter context section from config."""
+    if not config:
+        return """NEWSLETTER CONTEXT:
+A weekly newsletter for sales and GTM professionals covering sales technology, tips, and insights."""
+
+    parts = ["NEWSLETTER CONTEXT:"]
+    if config.get("description"):
+        parts.append(f"About: {config['description']}")
+    if config.get("audience"):
+        parts.append(f"Audience: {config['audience']}")
+    if config.get("themes"):
+        parts.append(f"Themes: {config['themes']}")
+    if config.get("tone"):
+        parts.append(f"Tone: {config['tone']}")
+    if config.get("avoid"):
+        parts.append(f"Avoid: {config['avoid']}")
+
+    return "\n".join(parts)
+
+
+def build_backlog_section(topic: dict | None, tech: dict | None, tips: list) -> str:
+    """Build the backlog items section."""
+    parts = []
+
+    if topic:
+        parts.append(f"TOPIC TO COVER: {topic['topic']}")
+        if topic.get("description"):
+            parts.append(f"  Context: {topic['description']}")
+
+    if tech:
+        parts.append(f"\nTECH TO SPOTLIGHT: {tech['name']}")
+        if tech.get("description"):
+            parts.append(f"  What it does: {tech['description']}")
+        if tech.get("why_relevant"):
+            parts.append(f"  Why now: {tech['why_relevant']}")
+        if tech.get("url"):
+            parts.append(f"  URL: {tech['url']}")
+
+    if tips:
+        parts.append(f"\nTIPS TO INCLUDE:")
+        for tip in tips:
+            parts.append(f"  - {tip['tip']}")
+            if tip.get("context"):
+                parts.append(f"    ({tip['context']})")
+
+    if not parts:
+        return "BACKLOG: No specific items provided. Generate all content based on newsletter context and current trends."
+
+    return "\n".join(parts)
+
+
+def generate_newsletter(
+    client,
+    config: dict | None = None,
+    topic: dict | None = None,
+    tech: dict | None = None,
+    tips: list = None,
+) -> str:
     """
-    Generate a newsletter with quick web lookups for current context.
-    Single API call that searches and writes in one step.
+    Generate a newsletter with optional backlog items.
+    Uses web search for freshness.
     """
-    topic_context = f"Focus area: {topic}"
-    if guidance:
-        topic_context += f"\nAdditional guidance: {guidance}"
+    context_section = build_context_section(config)
+    backlog_section = build_backlog_section(topic, tech, tips or [])
 
     def make_request():
         return client.messages.create(
             model=WRITING_MODEL,
             max_tokens=MAX_WRITING_TOKENS,
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 2}],
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}],
             messages=[
                 {
                     "role": "user",
-                    "content": f"""You are a sales newsletter writer. Write this week's newsletter using the structure below.
+                    "content": f"""You are a newsletter writer. Write this week's newsletter using the structure below.
 
-{topic_context}
+{context_section}
 
-Do 1-2 quick web searches to find current, relevant information, then write the newsletter.
+{backlog_section}
+
+Do a quick web search to find current, relevant information to supplement the content, then write the newsletter.
 
 NEWSLETTER STRUCTURE:
 
 ## 1️⃣ Sales Tech Spotlight
-Feature ONE sales technology that has recent relevance. Brief description of what it does and why it matters now.
+Feature ONE sales technology. If a specific tech was provided above, use it. Otherwise, choose something relevant and timely.
+Brief description of what it does and why it matters now.
 
 ## 2️⃣ Two Tips to Try This Week
-Two actionable sales tips based on recent trends, news, or best practices. Keep them practical and specific.
+Two actionable tips. If specific tips were provided above, expand on them. Otherwise, generate relevant tips based on the newsletter context.
+Keep them practical and specific.
 
 ## 3️⃣ Three Takeaways
-Three quick insights or learnings from the past week. These can be observations, stats, or lessons relevant to sales professionals.
+Three quick insights or learnings. These should be observations, stats, or lessons relevant to the audience.
 
 ---
 

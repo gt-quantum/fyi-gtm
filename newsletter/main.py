@@ -3,8 +3,8 @@
 Newsletter Automation Script
 
 Runs weekly via GitHub Actions to:
-1. Pull an available topic from Supabase
-2. Generate a newsletter with quick web lookups
+1. Load newsletter config and check backlogs
+2. Generate a newsletter with available items or fresh content
 3. Save content to Supabase
 4. Create a draft broadcast in Kit.com
 """
@@ -32,51 +32,78 @@ def run():
     supabase = db.get_client()
     anthropic = claude.get_client()
 
-    # Step 1: Get next topic
-    print("Fetching next available topic...")
+    # Step 1: Load newsletter config
+    print("Loading newsletter config...")
+    newsletter_config = db.get_newsletter_config(supabase)
+    if newsletter_config:
+        print(f"  Newsletter: {newsletter_config.get('name', 'FYI GTM')}")
+    else:
+        print("  No config found, using defaults")
+
+    # Step 2: Check backlogs for available items
+    print("Checking backlogs...")
     topic = db.get_next_topic(supabase)
+    tech = db.get_next_tech(supabase)
+    tips = db.get_next_tips(supabase, count=2)
 
-    if not topic:
-        print("No available topics found. Add topics to newsletter_topics table.")
-        sys.exit(0)
+    print(f"  Topic: {topic['topic'] if topic else 'None (will generate)'}")
+    print(f"  Tech: {tech['name'] if tech else 'None (will generate)'}")
+    print(f"  Tips: {len(tips)} available")
 
-    print(f"Selected topic: {topic['topic']}")
-
-    # Step 2: Create run record
-    run_record = db.create_run(supabase, topic["id"])
+    # Step 3: Create run record
+    run_record = db.create_run(supabase, topic["id"] if topic else None)
     run_id = run_record["id"]
     print(f"Created run: {run_id}")
 
     try:
-        # Step 3: Generate newsletter (single call with web search)
+        # Step 4: Generate newsletter
         print("Generating newsletter...")
         db.update_run(supabase, run_id, status="writing")
 
         newsletter_content = claude.generate_newsletter(
-            anthropic, topic["topic"], topic.get("description")
+            anthropic,
+            config=newsletter_config,
+            topic=topic,
+            tech=tech,
+            tips=tips,
         )
         db.update_run(supabase, run_id, newsletter_content=newsletter_content)
         print("Newsletter generated.")
 
-        # Step 4: Create Kit.com draft broadcast
+        # Step 5: Mark backlog items as used
+        if topic:
+            db.mark_topic_used(supabase, topic["id"])
+            print(f"  Marked topic used: {topic['topic']}")
+        if tech:
+            db.mark_tech_used(supabase, tech["id"])
+            print(f"  Marked tech used: {tech['name']}")
+        if tips:
+            db.mark_tips_used(supabase, [t["id"] for t in tips])
+            print(f"  Marked {len(tips)} tips used")
+
+        # Step 6: Create Kit.com draft broadcast
         print("Creating draft broadcast in Kit.com...")
 
-        subject = f"FYI GTM: {topic['topic']}"
+        # Build subject line
+        if topic:
+            subject = f"FYI GTM: {topic['topic']}"
+        elif tech:
+            subject = f"FYI GTM: {tech['name']} + This Week's Sales Tips"
+        else:
+            subject = "FYI GTM: This Week in Sales"
 
         kit_response = kit.create_draft_broadcast(
             subject=subject,
             content=newsletter_content,
-            description=topic.get("description"),
+            description=topic.get("description") if topic else None,
         )
         broadcast_id = kit_response.get("broadcast", {}).get("id", "unknown")
         print(f"Created Kit.com draft: {broadcast_id}")
 
-        # Step 5: Mark complete
-        db.mark_topic_used(supabase, topic["id"])
+        # Step 7: Mark run complete
         db.complete_run(supabase, run_id, str(broadcast_id))
 
         print("Newsletter automation complete!")
-        print(f"  Topic: {topic['topic']}")
         print(f"  Run ID: {run_id}")
         print(f"  Kit Broadcast ID: {broadcast_id}")
 
