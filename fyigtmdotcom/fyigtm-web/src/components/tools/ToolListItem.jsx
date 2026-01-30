@@ -84,7 +84,7 @@ export default function ToolListItem({ tool, index = 0 }) {
         .tool-list-item {
           background: var(--color-card-bg);
           border: 1px solid var(--color-card-border);
-          border-radius: 12px;
+          border-radius: 0;
           padding: 16px 20px;
           transition: all 0.2s ease;
           cursor: pointer;
@@ -112,7 +112,7 @@ export default function ToolListItem({ tool, index = 0 }) {
         .tool-icon-wrapper {
           width: 52px;
           height: 52px;
-          border-radius: 12px;
+          border-radius: 0;
           overflow: hidden;
           flex-shrink: 0;
           background: var(--color-background-secondary);
@@ -234,7 +234,7 @@ export default function ToolListItem({ tool, index = 0 }) {
           padding: 10px 14px;
           background: transparent;
           border: 1px solid var(--color-border);
-          border-radius: 8px;
+          border-radius: 0;
           cursor: pointer;
           transition: all 0.2s;
           min-width: 54px;

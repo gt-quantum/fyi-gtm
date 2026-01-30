@@ -57,7 +57,7 @@ export default function UpvoteButton({ slug, initialUpvotes = 0, variant = 'card
       border: '1px solid',
       borderColor: hasVoted ? 'var(--color-text)' : 'var(--color-border)',
       cursor: hasVoted ? 'default' : 'pointer',
-      color: hasVoted ? 'var(--color-background)' : 'var(--color-text-muted)',
+      color: hasVoted ? 'var(--color-background)' : 'var(--color-text)',
       transition: 'all 0.2s ease',
       opacity: isLoading ? 0.7 : 1,
     },
@@ -70,7 +70,6 @@ export default function UpvoteButton({ slug, initialUpvotes = 0, variant = 'card
       background: hasVoted ? 'var(--color-text)' : 'transparent',
       border: '1px solid',
       borderColor: hasVoted ? 'var(--color-text)' : 'var(--color-border)',
-      borderRadius: '8px',
       cursor: hasVoted ? 'default' : 'pointer',
       transition: 'all 0.2s',
       minWidth: '54px',
@@ -85,7 +84,6 @@ export default function UpvoteButton({ slug, initialUpvotes = 0, variant = 'card
       background: hasVoted ? 'var(--color-text)' : 'transparent',
       border: '1px solid',
       borderColor: hasVoted ? 'var(--color-text)' : 'var(--color-border)',
-      borderRadius: '8px',
       cursor: hasVoted ? 'default' : 'pointer',
       transition: 'all 0.2s',
       minWidth: '60px',
@@ -97,7 +95,7 @@ export default function UpvoteButton({ slug, initialUpvotes = 0, variant = 'card
     card: {
       fontSize: '12px',
       fontWeight: 600,
-      color: hasVoted ? 'var(--color-background)' : 'var(--color-text-muted)',
+      color: hasVoted ? 'var(--color-background)' : 'var(--color-text)',
       transition: 'color 0.2s',
     },
     list: {
