@@ -1,10 +1,14 @@
 import type { APIRoute } from 'astro';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const data = await request.json();
 
-    const webhookUrl = import.meta.env.SLACK_WEBHOOK_URL;
+    // Access env vars using the same pattern as other API routes
+    const runtime = (locals as any).runtime;
+    const env = runtime?.env || process.env;
+    const webhookUrl = env.SLACK_WEBHOOK_URL || import.meta.env.SLACK_WEBHOOK_URL;
+
     if (!webhookUrl) {
       console.error('SLACK_WEBHOOK_URL not configured');
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
