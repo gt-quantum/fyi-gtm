@@ -20,7 +20,7 @@ def research_topic(client, topic: str, description: str | None = None) -> str:
     response = client.messages.create(
         model=RESEARCH_MODEL,
         max_tokens=MAX_RESEARCH_TOKENS,
-        tools=[{"type": "web_search_20250305"}],
+        tools=[{"type": "web_search_20250305", "name": "web_search"}],
         messages=[
             {
                 "role": "user",
