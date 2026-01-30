@@ -184,7 +184,7 @@ export default function SearchableToolsList({ tools: initialTools, defaultSort =
           padding: 6px 12px;
           background: transparent;
           border: 1px solid var(--color-border);
-          border-radius: 6px;
+          border-radius: 0;
           font-size: 13px;
           font-weight: 500;
           color: var(--color-text-muted);
@@ -214,7 +214,7 @@ export default function SearchableToolsList({ tools: initialTools, defaultSort =
           padding: 48px 24px;
           background: var(--color-background-secondary);
           border: 1px solid var(--color-border);
-          border-radius: 8px;
+          border-radius: 0;
         }
 
         .no-results-title {
