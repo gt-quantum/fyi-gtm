@@ -140,6 +140,16 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
     logs.push(`Generated content for: ${detectedName}`);
 
+    // Fetch logo
+    logs.push('Fetching logo...');
+    const logoUrl = await fetchLogoUrl(toolUrl);
+    if (logoUrl) {
+      frontmatter.logo = logoUrl;
+      logs.push(`Found logo: ${logoUrl}`);
+    } else {
+      logs.push('Could not find logo');
+    }
+
     // Save to database
     const { data: updatedDraft, error: updateError } = await supabase
       .from('tool_drafts')
@@ -220,13 +230,8 @@ URL: ${toolUrl}
 ${toolName ? `Name: ${toolName}` : 'Name: (determine from research)'}
 
 INSTRUCTIONS:
-1. Use web search to research this tool thoroughly:
-   - Visit the tool's website to understand features and pricing
-   - Search for user reviews on G2, Trustpilot, Capterra
-   - Search Reddit for real user experiences
-   - Look for any recent news or updates about the tool
-
-2. Write a balanced, helpful review based on your research.
+1. Use web search to research this tool thoroughly
+2. Write a balanced, helpful review based on your research
 
 WRITING GUIDELINES:
 - Tone: ${tone}
@@ -234,11 +239,16 @@ WRITING GUIDELINES:
 - Avoid: ${avoid}
 - Target word count: ${wordCount} words
 
-TEMPLATE STRUCTURE TO FOLLOW:
+TEMPLATE STRUCTURE:
 ${template}
 
-OUTPUT FORMAT:
-First, output frontmatter as a JSON code block with these fields:
+CRITICAL OUTPUT RULES:
+- Output ONLY the JSON block and the review content
+- Do NOT include any preamble, thinking, or explanation before the JSON
+- Do NOT say things like "Let me research..." or "I'll write a review..."
+- Start your response IMMEDIATELY with the JSON code block
+
+OUTPUT FORMAT (start your response exactly like this):
 \`\`\`json
 {
   "name": "Tool Name",
@@ -251,9 +261,8 @@ First, output frontmatter as a JSON code block with these fields:
 }
 \`\`\`
 
-Then write the review content in Markdown, following the template structure.
-
-Begin your research and write the review:`;
+## What is Tool Name?
+[Review content starts here...]`;
 }
 
 function getDefaultTemplate(): string {
@@ -300,8 +309,22 @@ function parseResponse(response: string): { frontmatter: Record<string, any>; co
     } catch (e) {
       // Ignore parse errors
     }
-    // Remove JSON block from content
-    content = response.replace(/```json[\s\S]*?```/, '').trim();
+
+    // Get everything AFTER the JSON block
+    const jsonEndIndex = response.indexOf('```', response.indexOf('```json') + 7);
+    if (jsonEndIndex !== -1) {
+      content = response.substring(jsonEndIndex + 3).trim();
+    }
+  }
+
+  // Remove any preamble before the first markdown heading
+  const headingMatch = content.match(/^[\s\S]*?(##\s+)/);
+  if (headingMatch && headingMatch.index !== undefined) {
+    const beforeHeading = content.substring(0, headingMatch.index).trim();
+    // If there's text before the heading that looks like preamble, remove it
+    if (beforeHeading.length > 0 && !beforeHeading.startsWith('#')) {
+      content = content.substring(headingMatch.index);
+    }
   }
 
   return { frontmatter, content };
@@ -322,4 +345,24 @@ function generateSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+async function fetchLogoUrl(toolUrl: string): Promise<string | null> {
+  try {
+    const url = new URL(toolUrl);
+    const domain = url.hostname.replace(/^www\./, '');
+
+    // Try Clearbit first (high quality logos)
+    const clearbitUrl = `https://logo.clearbit.com/${domain}`;
+    const clearbitResponse = await fetch(clearbitUrl, { method: 'HEAD' });
+
+    if (clearbitResponse.ok) {
+      return clearbitUrl;
+    }
+
+    // Fallback to Google's favicon service (always works but lower quality)
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+  } catch (e) {
+    return null;
+  }
 }

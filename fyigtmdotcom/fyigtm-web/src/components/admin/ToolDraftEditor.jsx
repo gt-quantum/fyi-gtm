@@ -547,7 +547,13 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
               value={JSON.stringify(draft.research_data, null, 2)}
               readOnly
               rows={20}
-              style={{ fontFamily: 'monospace', fontSize: '12px', backgroundColor: '#f9fafb' }}
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                backgroundColor: '#1e1e2e',
+                color: '#a0a0a0',
+                border: '1px solid #333'
+              }}
             />
           </div>
         </div>
