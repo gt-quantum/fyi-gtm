@@ -74,8 +74,7 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
 
             <div class="tool-header-content">
               <h1 class="tool-name">{tool.name}</h1>
-              <p class="tool-tagline">{tool.description.split('.')[0]}</p>
-              <p class="tool-description">{tool.longDescription || tool.description}</p>
+              <p class="tool-description">{tool.description}</p>
 
               <div class="tool-actions">
                 <a href={tool.url} target="_blank" rel="noopener noreferrer" class="btn-view-tool">
