@@ -175,28 +175,6 @@ export default function ToolDraftsManager({ token }) {
     }
   };
 
-  const handlePublish = async (draft) => {
-    if (!confirm(`Publish "${draft.name || draft.slug}" to GitHub? This will create a new tool page.`)) return;
-
-    try {
-      const response = await fetch(`/api/admin/tool-drafts/${draft.id}/publish`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to publish');
-      }
-
-      setDrafts((prev) => prev.map((d) => (d.id === result.draft.id ? result.draft : d)));
-      alert(`Published successfully: ${result.message}`);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   const handleSaveDraft = async (updatedDraft) => {
     setDrafts((prev) => prev.map((d) => (d.id === updatedDraft.id ? updatedDraft : d)));
   };
@@ -211,7 +189,6 @@ export default function ToolDraftsManager({ token }) {
           fetchDrafts();
         }}
         onSave={handleSaveDraft}
-        onPublish={() => handlePublish(viewingDraft)}
         startResearchImmediately={viewingDraft._startResearch}
       />
     );

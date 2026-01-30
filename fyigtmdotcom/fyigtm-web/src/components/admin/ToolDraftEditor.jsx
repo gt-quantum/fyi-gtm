@@ -15,7 +15,7 @@ const STATUS_CONFIG = {
   published: { label: 'Published', color: '#8b5cf6' },
 };
 
-export default function ToolDraftEditor({ token, draft: initialDraft, onBack, onSave, onPublish, startResearchImmediately }) {
+export default function ToolDraftEditor({ token, draft: initialDraft, onBack, onSave, startResearchImmediately }) {
   const [draft, setDraft] = useState(initialDraft);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +27,9 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
   const [researchProgress, setResearchProgress] = useState('');
   const [researchLogs, setResearchLogs] = useState([]);
   const hasStartedResearch = useRef(false);
+
+  // Publishing state
+  const [publishing, setPublishing] = useState(false);
 
   // Determine which tabs to show
   const hasContent = draft.generated_content && draft.generated_content.trim().length > 0;
@@ -231,6 +234,38 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
     }
   };
 
+  const handlePublish = async () => {
+    if (!confirm(`Publish "${draft.name || draft.slug}" to GitHub? This will create a new tool page.`)) return;
+
+    setError('');
+    setSuccess('');
+    setPublishing(true);
+    addLog('Starting publish to GitHub...');
+
+    try {
+      const response = await fetch(`/api/admin/tool-drafts/${draft.id}/publish`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to publish');
+      }
+
+      setDraft(result.draft);
+      onSave(result.draft);
+      addLog('Published successfully!');
+      setSuccess(`Published successfully: ${result.message}`);
+    } catch (err) {
+      setError(err.message);
+      addLog(`Publish error: ${err.message}`);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const frontmatter = draft.frontmatter || {};
   const statusConfig = STATUS_CONFIG[draft.status] || { label: draft.status, color: '#6b7280' };
 
@@ -317,10 +352,11 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
           {hasContent && (draft.status === 'approved' || draft.status === 'draft') && (
             <button
               className="action-btn"
-              onClick={onPublish}
-              style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', border: 'none' }}
+              onClick={handlePublish}
+              disabled={publishing}
+              style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', border: 'none', opacity: publishing ? 0.7 : 1 }}
             >
-              Publish to GitHub
+              {publishing ? 'Publishing...' : 'Publish to GitHub'}
             </button>
           )}
         </div>

@@ -174,6 +174,9 @@ async function commitToGitHub(options: {
   }
 
   // Create or update the file
+  // Use btoa for base64 encoding (works in Cloudflare Workers, unlike Buffer)
+  const base64Content = btoa(unescape(encodeURIComponent(content)));
+
   const response = await fetch(`${apiBase}/contents/${path}`, {
     method: 'PUT',
     headers: {
@@ -183,7 +186,7 @@ async function commitToGitHub(options: {
     },
     body: JSON.stringify({
       message,
-      content: Buffer.from(content).toString('base64'),
+      content: base64Content,
       branch,
       ...(existingSha ? { sha: existingSha } : {}),
     }),
