@@ -9,7 +9,7 @@ priceNote: "Free tier with watermark"
 category: "Image Generation"
 subcategory: "Art"
 tags: ["coloring", "art", "relaxation", "creative"]
-upvotes: 1240
+upvotes: 0
 comments: 56
 views: 14000
 featured: false

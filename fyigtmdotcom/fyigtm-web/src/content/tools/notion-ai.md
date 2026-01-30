@@ -9,7 +9,7 @@ priceNote: "$10/member/month"
 category: "Productivity"
 subcategory: "Writing"
 tags: ["productivity", "writing", "notes", "workspace"]
-upvotes: 4560
+upvotes: 0
 comments: 198
 views: 56000
 featured: false

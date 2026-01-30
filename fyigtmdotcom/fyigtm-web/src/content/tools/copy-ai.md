@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro from $49/mo"
 category: "Writing"
 subcategory: "Copywriting"
 tags: ["writing", "marketing", "copywriting", "social"]
-upvotes: 3890
+upvotes: 0
 comments: 156
 views: 42000
 featured: false

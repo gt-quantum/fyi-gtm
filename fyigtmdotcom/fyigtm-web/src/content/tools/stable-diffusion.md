@@ -9,7 +9,7 @@ priceNote: "Open source, cloud options available"
 category: "Image Generation"
 subcategory: "Art"
 tags: ["image", "art", "open-source", "local"]
-upvotes: 9340
+upvotes: 0
 comments: 478
 views: 112000
 featured: false

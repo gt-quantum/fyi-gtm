@@ -9,7 +9,7 @@ priceNote: "Free to use"
 category: "Video"
 subcategory: "Generation"
 tags: ["video", "ai", "generation", "free"]
-upvotes: 2890
+upvotes: 0
 comments: 134
 views: 32000
 featured: false

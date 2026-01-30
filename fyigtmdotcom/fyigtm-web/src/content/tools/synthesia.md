@@ -9,7 +9,7 @@ priceNote: "Starting at $30/mo"
 category: "Video"
 subcategory: "Generation"
 tags: ["video", "avatars", "presentation", "training"]
-upvotes: 4120
+upvotes: 0
 comments: 187
 views: 48000
 featured: false

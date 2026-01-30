@@ -9,7 +9,7 @@ priceNote: "Free credits daily"
 category: "Audio"
 subcategory: "Music"
 tags: ["music", "audio", "creative", "generation"]
-upvotes: 5430
+upvotes: 0
 comments: 289
 views: 65000
 featured: true

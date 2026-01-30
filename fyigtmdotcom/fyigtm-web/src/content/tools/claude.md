@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro at $20/mo"
 category: "Chat"
 subcategory: "AI Assistants"
 tags: ["chatbot", "writing", "analysis", "reasoning"]
-upvotes: 9870
+upvotes: 0
 comments: 423
 views: 120000
 featured: true

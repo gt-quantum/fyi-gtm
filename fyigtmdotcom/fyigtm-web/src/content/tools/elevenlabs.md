@@ -9,7 +9,7 @@ priceNote: "Free tier available"
 category: "Audio"
 subcategory: "Text-to-Speech"
 tags: ["voice", "audio", "tts", "speech"]
-upvotes: 5670
+upvotes: 0
 comments: 234
 views: 67000
 featured: false

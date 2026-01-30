@@ -9,7 +9,7 @@ priceNote: "150 free tokens daily"
 category: "Image Generation"
 subcategory: "Game Assets"
 tags: ["image", "game", "assets", "art"]
-upvotes: 3210
+upvotes: 0
 comments: 145
 views: 38000
 featured: false

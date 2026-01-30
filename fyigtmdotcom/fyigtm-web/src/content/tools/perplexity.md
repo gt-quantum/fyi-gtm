@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro at $20/mo"
 category: "Search"
 subcategory: "Research"
 tags: ["search", "research", "questions", "answers"]
-upvotes: 6780
+upvotes: 0
 comments: 312
 views: 82000
 featured: true

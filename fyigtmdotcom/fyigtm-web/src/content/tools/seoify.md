@@ -9,7 +9,7 @@ priceNote: "Free analysis, Pro features paid"
 category: "Marketing"
 subcategory: "SEO"
 tags: ["seo", "marketing", "content", "optimization"]
-upvotes: 1890
+upvotes: 0
 comments: 87
 views: 21000
 featured: false

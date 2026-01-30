@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro from $9/mo"
 category: "Audio"
 subcategory: "Enhancement"
 tags: ["audio", "podcast", "enhancement", "noise removal"]
-upvotes: 980
+upvotes: 0
 comments: 43
 views: 11000
 featured: false

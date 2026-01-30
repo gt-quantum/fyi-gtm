@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro from $15/mo"
 category: "Video"
 subcategory: "Editing"
 tags: ["video", "podcast", "editing", "transcription"]
-upvotes: 4320
+upvotes: 0
 comments: 198
 views: 51000
 featured: false

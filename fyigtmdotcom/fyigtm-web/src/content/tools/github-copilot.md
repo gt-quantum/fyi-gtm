@@ -9,7 +9,7 @@ priceNote: "$10/mo or $100/year"
 category: "Code"
 subcategory: "Development"
 tags: ["coding", "development", "productivity", "ide"]
-upvotes: 11200
+upvotes: 0
 comments: 567
 views: 145000
 featured: true

@@ -9,7 +9,7 @@ priceNote: "Starting at $49/mo"
 category: "Writing"
 subcategory: "Marketing"
 tags: ["writing", "marketing", "copywriting", "content"]
-upvotes: 6230
+upvotes: 0
 comments: 287
 views: 78000
 featured: false

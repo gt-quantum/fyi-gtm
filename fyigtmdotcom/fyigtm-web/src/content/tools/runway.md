@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro from $15/mo"
 category: "Video"
 subcategory: "Editing"
 tags: ["video", "editing", "creative", "effects"]
-upvotes: 7890
+upvotes: 0
 comments: 345
 views: 89000
 featured: true

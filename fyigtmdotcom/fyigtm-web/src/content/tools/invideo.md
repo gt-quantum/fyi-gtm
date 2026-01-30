@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro from $15/mo"
 category: "Video"
 subcategory: "Creation"
 tags: ["video", "editing", "marketing", "social"]
-upvotes: 7230
+upvotes: 0
 comments: 287
 views: 78000
 featured: true

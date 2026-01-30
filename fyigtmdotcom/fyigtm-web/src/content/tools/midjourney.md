@@ -9,7 +9,7 @@ priceNote: "Starting at $10/mo"
 category: "Image Generation"
 subcategory: "Art"
 tags: ["image", "art", "creative", "design"]
-upvotes: 12350
+upvotes: 0
 comments: 654
 views: 180000
 featured: true

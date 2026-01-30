@@ -9,7 +9,7 @@ priceNote: "Free tier available, Plus at $20/mo"
 category: "Chat"
 subcategory: "Chatbots"
 tags: ["chatbot", "writing", "coding", "productivity"]
-upvotes: 15420
+upvotes: 0
 comments: 892
 views: 250000
 featured: true

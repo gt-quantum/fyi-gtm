@@ -9,7 +9,7 @@ priceNote: "Free tier, Pro at $20/mo"
 category: "Code"
 subcategory: "IDE"
 tags: ["coding", "ide", "editor", "development"]
-upvotes: 4670
+upvotes: 0
 comments: 234
 views: 54000
 featured: false

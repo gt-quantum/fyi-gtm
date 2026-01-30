@@ -9,7 +9,7 @@ priceNote: "Via ChatGPT Plus or API"
 category: "Image Generation"
 subcategory: "Art"
 tags: ["image", "art", "creative"]
-upvotes: 8540
+upvotes: 0
 comments: 312
 views: 95000
 featured: true
