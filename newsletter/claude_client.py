@@ -66,6 +66,14 @@ GUIDELINES:
 - Format in Markdown
 - End with a brief sign-off
 
+IMAGES:
+- Include 1-2 relevant images total (not per section), only where they add value
+- Use Unsplash images with this markdown format: ![alt text](https://images.unsplash.com/photo-IMAGE_ID?w=600&h=400&fit=crop)
+- Good image topics: sales team, technology, business meeting, data dashboard, handshake, office
+- Example: ![Sales team collaborating](https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop)
+- Place images after the section heading, before the text
+- Skip images if none feel relevant
+
 Write the newsletter now:""",
                 }
             ],
