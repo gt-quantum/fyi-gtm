@@ -206,8 +206,8 @@ async function commitToGitHub(options: {
   }
 
   // Create or update the file
-  // Use btoa for base64 encoding (works in Cloudflare Workers, unlike Buffer)
-  const base64Content = btoa(unescape(encodeURIComponent(content)));
+  // Use TextEncoder + manual base64 for reliable UTF-8 encoding in Cloudflare Workers
+  const base64Content = uint8ArrayToBase64(new TextEncoder().encode(content));
 
   const response = await fetch(`${apiBase}/contents/${path}`, {
     method: 'PUT',
@@ -239,4 +239,10 @@ async function commitToGitHub(options: {
   }
 
   return response.json();
+}
+
+// Reliable base64 encoding for UTF-8 content in Cloudflare Workers
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
+  return btoa(binString);
 }
