@@ -28,12 +28,13 @@ export function validateToken(authHeader: string | null): boolean {
   }
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const body = await request.json();
     const { password } = body;
 
-    const adminPassword = import.meta.env.ADMIN_PASSWORD;
+    const runtime = (locals as any).runtime;
+    const adminPassword = runtime?.env?.ADMIN_PASSWORD || import.meta.env.ADMIN_PASSWORD;
 
     if (!adminPassword) {
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {

@@ -4,7 +4,7 @@ import { validateToken } from '../auth';
 
 export const prerender = false;
 
-export const PUT: APIRoute = async ({ params, request }) => {
+export const PUT: APIRoute = async ({ params, request, locals }) => {
   const authHeader = request.headers.get('Authorization');
   if (!validateToken(authHeader)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -16,7 +16,8 @@ export const PUT: APIRoute = async ({ params, request }) => {
   try {
     const { id } = params;
     const body = await request.json();
-    const supabase = getSupabaseAdmin();
+    const runtime = (locals as any).runtime;
+    const supabase = getSupabaseAdmin(runtime?.env);
 
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -47,7 +48,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ params, request }) => {
+export const DELETE: APIRoute = async ({ params, request, locals }) => {
   const authHeader = request.headers.get('Authorization');
   if (!validateToken(authHeader)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -58,7 +59,8 @@ export const DELETE: APIRoute = async ({ params, request }) => {
 
   try {
     const { id } = params;
-    const supabase = getSupabaseAdmin();
+    const runtime = (locals as any).runtime;
+    const supabase = getSupabaseAdmin(runtime?.env);
 
     const { error } = await supabase
       .from('tips_backlog')

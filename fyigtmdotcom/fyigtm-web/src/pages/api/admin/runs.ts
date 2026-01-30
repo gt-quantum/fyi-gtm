@@ -4,7 +4,7 @@ import { validateToken } from './auth';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ request, locals }) => {
   const authHeader = request.headers.get('Authorization');
   if (!validateToken(authHeader)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -14,7 +14,8 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    const supabase = getSupabaseAdmin();
+    const runtime = (locals as any).runtime;
+    const supabase = getSupabaseAdmin(runtime?.env);
     const { data, error } = await supabase
       .from('newsletter_runs')
       .select('*, newsletter_topics(topic)')
