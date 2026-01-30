@@ -103,11 +103,24 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
             <UpvoteButton client:load slug={tool.slug} initialUpvotes={tool.upvotes} variant="detail" />
           </div>
         </div>
-        <!-- Screenshot Placeholder -->
+        <!-- Website Screenshot -->
         <div class="screenshot-section">
-          <div class="screenshot-placeholder">
-            <span class="screenshot-text">{tool.name} Website Screenshot</span>
-          </div>
+          <a href={tool.url} target="_blank" rel="noopener noreferrer" class="screenshot-link">
+            <img
+              src={`https://image.thum.io/get/width/1280/crop/800/${tool.url}`}
+              alt={`${tool.name} website screenshot`}
+              class="screenshot-image"
+              loading="lazy"
+            />
+            <div class="screenshot-overlay">
+              <span>Visit {tool.name}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </div>
+          </a>
         </div>
 
         <!-- Tags -->
@@ -486,20 +499,44 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
     margin-bottom: 24px;
   }
 
-  .screenshot-placeholder {
-    width: 100%;
-    aspect-ratio: 16/9;
-    background: var(--color-background-secondary);
-    border: 1px solid var(--color-border);
+  .screenshot-link {
+    display: block;
+    position: relative;
     border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .screenshot-link:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .screenshot-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: var(--color-background-secondary);
+  }
+
+  .screenshot-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
   }
 
-  .screenshot-text {
-    color: var(--color-text-muted);
-    font-size: 14px;
+  .screenshot-link:hover .screenshot-overlay {
+    opacity: 1;
   }
 
   /* Tags */
