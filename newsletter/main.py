@@ -6,16 +6,15 @@ Runs weekly via GitHub Actions to:
 1. Pull an available topic from Supabase
 2. Generate a newsletter with quick web lookups
 3. Save content to Supabase
-4. Create a draft campaign in sender.net
+4. Create a draft broadcast in Kit.com
 """
 
 import sys
-from pathlib import Path
 
 from . import config
 from . import supabase_client as db
 from . import claude_client as claude
-from . import sender_client as sender
+from . import kit_client as kit
 
 
 def run():
@@ -59,29 +58,27 @@ def run():
         db.update_run(supabase, run_id, newsletter_content=newsletter_content)
         print("Newsletter generated.")
 
-        # Step 4: Create sender.net draft campaign
-        print("Creating draft campaign in sender.net...")
+        # Step 4: Create Kit.com draft broadcast
+        print("Creating draft broadcast in Kit.com...")
 
-        # Use topic as subject, with a title for internal tracking
-        title = f"FYI GTM: {topic['topic']}"
-        subject = topic["topic"]
+        subject = f"FYI GTM: {topic['topic']}"
 
-        sender_response = sender.create_draft_campaign(
-            title=title,
+        kit_response = kit.create_draft_broadcast(
             subject=subject,
             content=newsletter_content,
+            description=topic.get("description"),
         )
-        campaign_id = sender_response.get("data", {}).get("id", "unknown")
-        print(f"Created sender.net draft: {campaign_id}")
+        broadcast_id = kit_response.get("broadcast", {}).get("id", "unknown")
+        print(f"Created Kit.com draft: {broadcast_id}")
 
         # Step 5: Mark complete
         db.mark_topic_used(supabase, topic["id"])
-        db.complete_run(supabase, run_id, campaign_id)
+        db.complete_run(supabase, run_id, str(broadcast_id))
 
         print("Newsletter automation complete!")
         print(f"  Topic: {topic['topic']}")
         print(f"  Run ID: {run_id}")
-        print(f"  Sender Campaign ID: {campaign_id}")
+        print(f"  Kit Broadcast ID: {broadcast_id}")
 
     except Exception as e:
         print(f"Error during newsletter generation: {e}")
