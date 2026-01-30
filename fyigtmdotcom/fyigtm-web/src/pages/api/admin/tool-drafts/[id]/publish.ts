@@ -193,8 +193,16 @@ async function commitToGitHub(options: {
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'GitHub API error');
+    const errorText = await response.text();
+    let errorMessage = `GitHub API error (${response.status})`;
+    try {
+      const errorData = JSON.parse(errorText);
+      errorMessage = errorData.message || errorMessage;
+    } catch {
+      // Response wasn't JSON, use the raw text
+      errorMessage = errorText.substring(0, 200) || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
