@@ -45,6 +45,7 @@ const {
 
     <!-- Prevent theme flash - default to dark -->
     <script is:inline>
+      // Apply theme on initial load
       (function() {
         const theme = localStorage.getItem('theme');
         if (theme === 'light') {
@@ -53,6 +54,16 @@ const {
           document.documentElement.removeAttribute('data-theme');
         }
       })();
+
+      // Handle View Transitions - copy theme to new document before swap
+      document.addEventListener('astro:before-swap', (e) => {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'light') {
+          e.newDocument.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          e.newDocument.documentElement.removeAttribute('data-theme');
+        }
+      });
     </script>
   </head>
   <body>

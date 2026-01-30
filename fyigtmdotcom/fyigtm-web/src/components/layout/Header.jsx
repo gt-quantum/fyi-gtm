@@ -298,23 +298,4 @@ const styles = {
   },
 };
 
-// Add responsive styles via CSS
-if (typeof window !== 'undefined') {
-  const existingStyle = document.getElementById('header-responsive-styles');
-  if (!existingStyle) {
-    const style = document.createElement('style');
-    style.id = 'header-responsive-styles';
-    style.textContent = `
-      @media (max-width: 1024px) {
-        .header-nav { display: none !important; }
-      }
-      @media (max-width: 768px) {
-        .header-submit { display: none !important; }
-        .header-menu-btn { display: flex !important; }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
 export default Header;
