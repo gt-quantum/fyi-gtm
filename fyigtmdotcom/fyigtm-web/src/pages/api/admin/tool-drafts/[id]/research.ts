@@ -395,7 +395,13 @@ WRITING GUIDELINES:
 - Tone: ${tone}
 - Emphasize: ${emphasize}
 - Avoid: ${avoid}
-- Target: ${wordCount} words
+
+CRITICAL LENGTH REQUIREMENT:
+You MUST write at least ${wordCount} words. This is a hard minimum, not a suggestion.
+- Expand each section with specific details, examples, and analysis
+- Include user quotes and specific feature descriptions
+- Do not summarize briefly - provide comprehensive coverage
+- Current target: ${wordCount}+ words (aim for ${Math.round(wordCount * 1.1)} words)
 
 TEMPLATE TO FOLLOW:
 ${template}
@@ -414,11 +420,13 @@ OUTPUT FORMAT - Start your response EXACTLY like this (no preamble):
 \`\`\`
 
 ## What is ${toolName}?
-[Your review starts here, following the template structure]`;
+[Your review starts here, following the template structure]
+
+Remember: Your review MUST be at least ${wordCount} words. Write comprehensively.`;
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 4000,
+    max_tokens: 8000,  // Increased to allow for longer reviews
     messages: [{ role: 'user', content: prompt }],
   });
 
