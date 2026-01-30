@@ -55,13 +55,13 @@ def mark_topic_used(client, topic_id: str):
     ).eq("id", topic_id).execute()
 
 
-def complete_run(client, run_id: str, beehiiv_post_id: str):
+def complete_run(client, run_id: str, broadcast_id: str):
     """Mark a run as successfully completed."""
     update_run(
         client,
         run_id,
         status="published",
-        beehiiv_post_id=beehiiv_post_id,
+        beehiiv_post_id=broadcast_id,  # Column name kept for compatibility
         completed_at=datetime.now(timezone.utc).isoformat(),
     )
 

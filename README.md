@@ -13,7 +13,7 @@ fyi-gtm/
 │   ├── config.py        # Configuration and env vars
 │   ├── supabase_client.py
 │   ├── claude_client.py
-│   ├── beehiiv_client.py
+│   ├── kit_client.py    # Kit.com (ConvertKit) API
 │   └── templates/
 │       └── newsletter_template.md
 ├── website/              # Astro site (coming soon)
@@ -27,10 +27,16 @@ fyi-gtm/
 Runs weekly via GitHub Actions:
 
 1. Pulls an available topic from Supabase (`newsletter_topics` table)
-2. Researches the topic using Claude with web search
-3. Writes a newsletter from the research (separate Claude context)
-4. Saves research and content to Supabase (`newsletter_runs` table)
-5. Creates a draft post in beehiiv
+2. Generates a newsletter using Claude with web search (1-2-3 format)
+3. Saves content to Supabase (`newsletter_runs` table)
+4. Creates a draft broadcast in Kit.com
+
+### Newsletter Format
+
+Each newsletter follows the 1-2-3 structure:
+- **1** Sales Tech Spotlight
+- **2** Tips to Try This Week
+- **3** Takeaways
 
 ### Setup
 
@@ -41,8 +47,7 @@ Runs weekly via GitHub Actions:
 
 2. **Add GitHub Secrets:**
    - `ANTHROPIC_API_KEY` - Your Anthropic API key
-   - `BEEHIIV_API_KEY` - Your beehiiv API key
-   - `BEEHIIV_PUBLICATION_ID` - Your beehiiv publication ID
+   - `KIT_API_KEY` - Your Kit.com API key (v4)
    - `SUPABASE_URL` - Your Supabase project URL
    - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
 
@@ -67,8 +72,7 @@ pip install -r requirements.txt
 
 # Set environment variables
 export ANTHROPIC_API_KEY=your_key
-export BEEHIIV_API_KEY=your_key
-export BEEHIIV_PUBLICATION_ID=your_id
+export KIT_API_KEY=your_key
 export SUPABASE_URL=your_url
 export SUPABASE_SERVICE_ROLE_KEY=your_key
 
@@ -80,5 +84,5 @@ python -m newsletter.main
 
 - **Newsletter template:** Edit `newsletter/templates/newsletter_template.md`
 - **Topics:** Add/modify rows in `newsletter_topics` table
-- **Schedule:** Modify cron in `.github/workflows/newsletter.yml`
-- **Models:** Adjust `RESEARCH_MODEL` and `WRITING_MODEL` in `newsletter/config.py`
+- **Schedule:** Modify cron in `.github/workflows/newsletter.yml` (default: Mondays 9AM UTC)
+- **Model:** Adjust `WRITING_MODEL` in `newsletter/config.py`
