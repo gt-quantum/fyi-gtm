@@ -5,7 +5,11 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const prerender = false;
 
-// This endpoint runs AI research for a tool draft
+// This endpoint runs the three-step hybrid research pipeline:
+// Step 1: Direct scraping (no AI)
+// Step 2: AI research review with Haiku (fast, cheap)
+// Step 3: Final writing with Sonnet (quality)
+
 export const POST: APIRoute = async ({ params, request, locals }) => {
   const authHeader = request.headers.get('Authorization');
   if (!validateToken(authHeader)) {
@@ -63,9 +67,12 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       });
     }
 
-    // Run the actual research
+    // ========== START THREE-STEP PIPELINE ==========
     const logs: string[] = [];
-    logs.push('Starting research process');
+    const toolUrl = draft.url;
+    const toolName = draft.name || '';
+
+    logs.push('Starting three-step research pipeline');
 
     // Update status to researching
     await supabase
@@ -77,7 +84,12 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       })
       .eq('id', id);
 
-    logs.push('Fetching tool review configuration');
+    // Get API key
+    const anthropicKey = env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      throw new Error('ANTHROPIC_API_KEY not configured');
+    }
+    const anthropic = new Anthropic({ apiKey: anthropicKey });
 
     // Fetch config
     const { data: config } = await supabase
@@ -85,70 +97,62 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       .select('*')
       .single();
 
+    // ========== STEP 1: DIRECT SCRAPING ==========
+    logs.push('Step 1: Scraping website directly...');
+
+    const scrapedData = await scrapeWebsite(toolUrl);
+    logs.push(`Scraped: ${scrapedData.name || 'unnamed'} - ${scrapedData.description?.substring(0, 50) || 'no description'}...`);
+
+    // Fetch logo
+    const logoUrl = await fetchLogoUrl(toolUrl);
+    if (logoUrl) {
+      scrapedData.logo = logoUrl;
+      logs.push(`Found logo: ${logoUrl}`);
+    }
+
+    // ========== STEP 2: AI RESEARCH REVIEW (HAIKU) ==========
+    logs.push('Step 2: AI research review with Haiku...');
+
+    const researchNotes = await runHaikuResearch(anthropic, toolUrl, toolName || scrapedData.name, scrapedData);
+    logs.push('Haiku research complete');
+
+    // ========== STEP 3: FINAL WRITING (SONNET) ==========
+    logs.push('Step 3: Writing review with Sonnet...');
+
     const reviewTemplate = config?.review_template || getDefaultTemplate();
     const tone = config?.tone || 'Professional but conversational.';
     const emphasize = config?.emphasize || 'Real user feedback and practical use cases.';
     const avoid = config?.avoid || 'Overly promotional language.';
     const wordCount = config?.word_count_target || 1500;
 
-    logs.push('Calling Claude API with web search');
+    const { content, frontmatter } = await runSonnetWriting(
+      anthropic,
+      toolUrl,
+      toolName || scrapedData.name || extractNameFromUrl(toolUrl),
+      scrapedData,
+      researchNotes,
+      reviewTemplate,
+      tone,
+      emphasize,
+      avoid,
+      wordCount
+    );
+    logs.push('Sonnet writing complete');
 
-    // Call Claude with web search
-    const anthropicKey = env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY not configured');
-    }
-
-    const anthropic = new Anthropic({ apiKey: anthropicKey });
-
-    const toolUrl = draft.url;
-    const toolName = draft.name || '';
-
-    const prompt = buildResearchPrompt(toolUrl, toolName, reviewTemplate, tone, emphasize, avoid, wordCount);
-
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    logs.push('Processing Claude response');
-
-    // Extract text from response
-    const textParts = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text);
-    const fullResponse = textParts.join('\n');
-
-    // Parse the response
-    const { frontmatter, content } = parseResponse(fullResponse);
-
-    logs.push('Extracting frontmatter and content');
-
-    // Determine name and slug
-    const detectedName = frontmatter.name || toolName || extractNameFromUrl(toolUrl);
+    // ========== FINALIZE ==========
+    const detectedName = frontmatter.name || toolName || scrapedData.name || extractNameFromUrl(toolUrl);
     const slug = frontmatter.slug || generateSlug(detectedName);
 
-    // Add required frontmatter fields
+    // Merge frontmatter
     frontmatter.name = detectedName;
     frontmatter.slug = slug;
     frontmatter.url = frontmatter.url || toolUrl;
+    frontmatter.logo = logoUrl || frontmatter.logo || '';
     frontmatter.featured = frontmatter.featured || false;
     frontmatter.isNew = frontmatter.isNew !== false;
     frontmatter.dateAdded = frontmatter.dateAdded || new Date().toISOString().split('T')[0];
 
     logs.push(`Generated content for: ${detectedName}`);
-
-    // Fetch logo
-    logs.push('Fetching logo...');
-    const logoUrl = await fetchLogoUrl(toolUrl);
-    if (logoUrl) {
-      frontmatter.logo = logoUrl;
-      logs.push(`Found logo: ${logoUrl}`);
-    } else {
-      logs.push('Could not find logo');
-    }
 
     // Save to database
     const { data: updatedDraft, error: updateError } = await supabase
@@ -159,9 +163,10 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
         generated_content: content,
         frontmatter: frontmatter,
         research_data: {
+          scraped: scrapedData,
+          haiku_research: researchNotes,
           generated_at: new Date().toISOString(),
-          model: 'claude-sonnet-4-20250514',
-          web_search_used: true,
+          pipeline: 'three-step-hybrid',
         },
         status: 'draft',
         error_message: null,
@@ -214,45 +219,192 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
   }
 };
 
-function buildResearchPrompt(
+// ========== STEP 1: WEBSITE SCRAPING ==========
+
+async function scrapeWebsite(url: string): Promise<Record<string, any>> {
+  const data: Record<string, any> = {
+    url,
+    scrapedAt: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+
+    if (!response.ok) {
+      data.error = `HTTP ${response.status}`;
+      return data;
+    }
+
+    const html = await response.text();
+
+    // Extract title
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      data.pageTitle = titleMatch[1].trim();
+      // Try to extract name from title (before | or -)
+      const namePart = titleMatch[1].split(/[|\-–—]/)[0].trim();
+      if (namePart && namePart.length < 50) {
+        data.name = namePart;
+      }
+    }
+
+    // Extract meta description
+    const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+    if (descMatch) {
+      data.description = descMatch[1].trim();
+    }
+
+    // Extract og:description as fallback
+    if (!data.description) {
+      const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+      if (ogDescMatch) {
+        data.description = ogDescMatch[1].trim();
+      }
+    }
+
+    // Extract og:title
+    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+    if (ogTitleMatch && !data.name) {
+      data.name = ogTitleMatch[1].trim();
+    }
+
+    // Try to find pricing indicators
+    const pricingKeywords = ['free', 'pricing', 'plans', 'premium', 'pro', 'enterprise', 'month', '/mo', 'trial'];
+    const lowerHtml = html.toLowerCase();
+    data.hasPricingPage = pricingKeywords.some(kw => lowerHtml.includes(kw));
+
+    // Extract any visible h1
+    const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+    if (h1Match) {
+      data.headline = h1Match[1].trim();
+    }
+
+    // Count some features indicators
+    const featureMatches = html.match(/feature|benefit|capability|solution/gi);
+    data.featureMentions = featureMatches ? featureMatches.length : 0;
+
+  } catch (err: any) {
+    data.error = err.message;
+  }
+
+  return data;
+}
+
+async function fetchLogoUrl(toolUrl: string): Promise<string | null> {
+  try {
+    const url = new URL(toolUrl);
+    const domain = url.hostname.replace(/^www\./, '');
+
+    // Try Clearbit first (high quality logos)
+    const clearbitUrl = `https://logo.clearbit.com/${domain}`;
+    const clearbitResponse = await fetch(clearbitUrl, { method: 'HEAD' });
+
+    if (clearbitResponse.ok) {
+      return clearbitUrl;
+    }
+
+    // Fallback to Google's favicon service
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ========== STEP 2: HAIKU RESEARCH ==========
+
+async function runHaikuResearch(
+  anthropic: Anthropic,
   toolUrl: string,
   toolName: string,
+  scrapedData: Record<string, any>
+): Promise<string> {
+  const prompt = `You are a research assistant. I need you to gather information about a software tool.
+
+TOOL: ${toolName || 'Unknown'}
+URL: ${toolUrl}
+
+SCRAPED DATA FROM WEBSITE:
+${JSON.stringify(scrapedData, null, 2)}
+
+YOUR TASK:
+1. Use web search to find:
+   - User reviews and ratings (G2, Capterra, Trustpilot)
+   - Reddit discussions about this tool
+   - Current pricing information
+   - Any recent news or updates
+
+2. Verify the scraped data is accurate
+
+3. Output a structured research summary with:
+   - Tool name and what it does
+   - Pricing (free/freemium/paid and specific tiers if found)
+   - Key features (list 3-5)
+   - User sentiment summary (what do users like/dislike)
+   - Notable reviews or quotes
+   - Any concerns or criticisms found
+
+Be factual and concise. This research will be used to write a review.`;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-3-5-haiku-20241022',
+    max_tokens: 2000,
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  // Extract text from response
+  const textParts = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text);
+
+  return textParts.join('\n');
+}
+
+// ========== STEP 3: SONNET WRITING ==========
+
+async function runSonnetWriting(
+  anthropic: Anthropic,
+  toolUrl: string,
+  toolName: string,
+  scrapedData: Record<string, any>,
+  researchNotes: string,
   template: string,
   tone: string,
   emphasize: string,
   avoid: string,
   wordCount: number
-): string {
-  return `You are a tech product reviewer. Research and write a comprehensive review of a software tool.
+): Promise<{ content: string; frontmatter: Record<string, any> }> {
+  const prompt = `You are a professional tech product reviewer. Write a comprehensive review based on the research provided.
 
-TOOL TO REVIEW:
+TOOL: ${toolName}
 URL: ${toolUrl}
-${toolName ? `Name: ${toolName}` : 'Name: (determine from research)'}
 
-INSTRUCTIONS:
-1. Use web search to research this tool thoroughly
-2. Write a balanced, helpful review based on your research
+SCRAPED DATA:
+${JSON.stringify(scrapedData, null, 2)}
+
+RESEARCH NOTES:
+${researchNotes}
 
 WRITING GUIDELINES:
 - Tone: ${tone}
 - Emphasize: ${emphasize}
 - Avoid: ${avoid}
-- Target word count: ${wordCount} words
+- Target: ${wordCount} words
 
-TEMPLATE STRUCTURE:
+TEMPLATE TO FOLLOW:
 ${template}
 
-CRITICAL OUTPUT RULES:
-- Output ONLY the JSON block and the review content
-- Do NOT include any preamble, thinking, or explanation before the JSON
-- Do NOT say things like "Let me research..." or "I'll write a review..."
-- Start your response IMMEDIATELY with the JSON code block
-
-OUTPUT FORMAT (start your response exactly like this):
+OUTPUT FORMAT - Start your response EXACTLY like this (no preamble):
 \`\`\`json
 {
-  "name": "Tool Name",
-  "slug": "tool-name",
+  "name": "${toolName}",
+  "slug": "${generateSlug(toolName)}",
   "description": "One-line SEO description under 160 chars",
   "pricing": "free|freemium|paid|trial",
   "priceNote": "Brief pricing summary",
@@ -261,8 +413,59 @@ OUTPUT FORMAT (start your response exactly like this):
 }
 \`\`\`
 
-## What is Tool Name?
-[Review content starts here...]`;
+## What is ${toolName}?
+[Your review starts here, following the template structure]`;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  // Extract text from response
+  const textParts = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text);
+  const fullResponse = textParts.join('\n');
+
+  // Parse response
+  const { frontmatter, content } = parseResponse(fullResponse);
+
+  return { content, frontmatter };
+}
+
+// ========== HELPERS ==========
+
+function parseResponse(response: string): { frontmatter: Record<string, any>; content: string } {
+  let frontmatter: Record<string, any> = {};
+  let content = response;
+
+  // Extract JSON frontmatter
+  const jsonMatch = response.match(/```json\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    try {
+      frontmatter = JSON.parse(jsonMatch[1].trim());
+    } catch (e) {
+      // Ignore parse errors
+    }
+
+    // Get everything AFTER the JSON block
+    const jsonEndIndex = response.indexOf('```', response.indexOf('```json') + 7);
+    if (jsonEndIndex !== -1) {
+      content = response.substring(jsonEndIndex + 3).trim();
+    }
+  }
+
+  // Remove any preamble before the first markdown heading
+  const headingMatch = content.match(/^[\s\S]*?(##\s+)/);
+  if (headingMatch && headingMatch.index !== undefined) {
+    const beforeHeading = content.substring(0, headingMatch.index).trim();
+    if (beforeHeading.length > 0 && !beforeHeading.startsWith('#')) {
+      content = content.substring(headingMatch.index);
+    }
+  }
+
+  return { frontmatter, content };
 }
 
 function getDefaultTemplate(): string {
@@ -297,39 +500,6 @@ Target audience and use cases.
 Final assessment and recommendation.`;
 }
 
-function parseResponse(response: string): { frontmatter: Record<string, any>; content: string } {
-  let frontmatter: Record<string, any> = {};
-  let content = response;
-
-  // Extract JSON frontmatter
-  const jsonMatch = response.match(/```json\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    try {
-      frontmatter = JSON.parse(jsonMatch[1].trim());
-    } catch (e) {
-      // Ignore parse errors
-    }
-
-    // Get everything AFTER the JSON block
-    const jsonEndIndex = response.indexOf('```', response.indexOf('```json') + 7);
-    if (jsonEndIndex !== -1) {
-      content = response.substring(jsonEndIndex + 3).trim();
-    }
-  }
-
-  // Remove any preamble before the first markdown heading
-  const headingMatch = content.match(/^[\s\S]*?(##\s+)/);
-  if (headingMatch && headingMatch.index !== undefined) {
-    const beforeHeading = content.substring(0, headingMatch.index).trim();
-    // If there's text before the heading that looks like preamble, remove it
-    if (beforeHeading.length > 0 && !beforeHeading.startsWith('#')) {
-      content = content.substring(headingMatch.index);
-    }
-  }
-
-  return { frontmatter, content };
-}
-
 function extractNameFromUrl(url: string): string {
   try {
     const hostname = new URL(url).hostname;
@@ -345,24 +515,4 @@ function generateSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-}
-
-async function fetchLogoUrl(toolUrl: string): Promise<string | null> {
-  try {
-    const url = new URL(toolUrl);
-    const domain = url.hostname.replace(/^www\./, '');
-
-    // Try Clearbit first (high quality logos)
-    const clearbitUrl = `https://logo.clearbit.com/${domain}`;
-    const clearbitResponse = await fetch(clearbitUrl, { method: 'HEAD' });
-
-    if (clearbitResponse.ok) {
-      return clearbitUrl;
-    }
-
-    // Fallback to Google's favicon service (always works but lower quality)
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-  } catch (e) {
-    return null;
-  }
 }
