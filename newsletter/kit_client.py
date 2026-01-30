@@ -1,9 +1,32 @@
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from .config import KIT_API_KEY
 
 KIT_API_BASE = "https://api.kit.com/v4"
+
+
+def get_next_friday_10am_et() -> str:
+    """
+    Calculate next Friday at 10:00 AM ET.
+    Returns ISO8601 timestamp.
+    """
+    # ET is UTC-5 (EST) or UTC-4 (EDT)
+    # For simplicity, using UTC-5 (standard time)
+    # 10:00 AM ET = 15:00 UTC
+    now = datetime.now(timezone.utc)
+
+    # Find next Friday (weekday 4)
+    days_until_friday = (4 - now.weekday()) % 7
+    if days_until_friday == 0 and now.hour >= 15:
+        # It's Friday but past 10 AM ET, schedule for next Friday
+        days_until_friday = 7
+
+    next_friday = now + timedelta(days=days_until_friday)
+    # Set to 15:00 UTC (10:00 AM ET)
+    send_time = next_friday.replace(hour=15, minute=0, second=0, microsecond=0)
+
+    return send_time.isoformat()
 
 
 def extract_preview_text(content: str, max_length: int = 100) -> str:
@@ -25,9 +48,9 @@ def extract_preview_text(content: str, max_length: int = 100) -> str:
     return ""
 
 
-def create_draft_broadcast(subject: str, content: str, description: str = None) -> dict:
+def create_draft_broadcast(subject: str, content: str, description: str = None, schedule: bool = True) -> dict:
     """
-    Create a draft broadcast in Kit.com.
+    Create a broadcast in Kit.com, optionally scheduled.
     Returns the API response including the broadcast ID.
     """
     url = f"{KIT_API_BASE}/broadcasts"
@@ -44,12 +67,15 @@ def create_draft_broadcast(subject: str, content: str, description: str = None) 
     # Extract preview text from first paragraph
     preview_text = extract_preview_text(content)
 
+    # Schedule for next Friday 10 AM ET, or leave as draft
+    send_at = get_next_friday_10am_et() if schedule else None
+
     payload = {
         "subject": subject,
         "content": html_content,
         "description": description or subject,
         "public": False,  # Don't publish to web
-        "send_at": None,  # null = draft, not scheduled
+        "send_at": send_at,
         "preview_text": preview_text,
     }
 

@@ -1,9 +1,9 @@
 name: Weekly Newsletter
 
 on:
-  # Run every Monday at 9:00 AM UTC
+  # Run every Thursday at 9:00 AM ET (14:00 UTC)
   schedule:
-    - cron: '0 9 * * 1'
+    - cron: '0 14 * * 4'
 
   # Allow manual trigger
   workflow_dispatch:
