@@ -5,6 +5,8 @@ import TopicsManager from './TopicsManager';
 import TechManager from './TechManager';
 import TipsManager from './TipsManager';
 import RunsHistory from './RunsHistory';
+import ToolConfigEditor from './ToolConfigEditor';
+import ToolDraftsManager from './ToolDraftsManager';
 
 const TABS = [
   { id: 'config', label: 'Newsletter Config' },
@@ -12,6 +14,8 @@ const TABS = [
   { id: 'tech', label: 'Tech Backlog' },
   { id: 'tips', label: 'Tips Backlog' },
   { id: 'runs', label: 'Run History' },
+  { id: 'tool-config', label: 'Tool Config' },
+  { id: 'tool-drafts', label: 'Tool Drafts' },
 ];
 
 export default function AdminLayout() {
@@ -61,6 +65,10 @@ export default function AdminLayout() {
         return <TipsManager token={token} />;
       case 'runs':
         return <RunsHistory token={token} />;
+      case 'tool-config':
+        return <ToolConfigEditor token={token} />;
+      case 'tool-drafts':
+        return <ToolDraftsManager token={token} />;
       default:
         return null;
     }
