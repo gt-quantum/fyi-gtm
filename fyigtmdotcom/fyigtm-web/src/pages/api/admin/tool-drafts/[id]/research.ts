@@ -478,34 +478,70 @@ function parseResponse(response: string): { frontmatter: Record<string, any>; co
 
 function getDefaultTemplate(): string {
   return `## What is {Tool Name}?
-Brief introduction and overview.
+
+Brief 2-3 sentence overview of what the tool does and its core value proposition.
+
+### Quick Facts
+- **Best for:** [Primary target audience]
+- **Pricing:** [Pricing model] - [Price range if known]
+- **Standout feature:** [One key differentiator]
 
 ## Key Features
-- Feature 1
-- Feature 2
-- Feature 3
+
+### [Feature Category 1]
+- What it does and why it matters
+- Specific capabilities
+- How users benefit
+
+### [Feature Category 2]
+- What it does and why it matters
+- Specific capabilities
+- How users benefit
+
+### [Feature Category 3]
+- What it does and why it matters
+- Specific capabilities
+- How users benefit
 
 ## Pricing
-Pricing breakdown and tiers.
+
+Brief overview of pricing model, then break down by tier:
+
+- **Free/Starter:** What's included, limitations
+- **Pro/Growth:** Price, key features added
+- **Enterprise:** Custom pricing, premium features
+
+Note any free trials, money-back guarantees, or pricing considerations.
 
 ## Pros & Cons
 
 ### Pros
-- Pro 1
-- Pro 2
+- **[Pro 1]:** Brief explanation of the benefit
+- **[Pro 2]:** Brief explanation of the benefit
+- **[Pro 3]:** Brief explanation of the benefit
+- **[Pro 4]:** Brief explanation of the benefit
 
 ### Cons
-- Con 1
-- Con 2
+- **[Con 1]:** Brief explanation of the limitation
+- **[Con 2]:** Brief explanation of the limitation
+- **[Con 3]:** Brief explanation of the limitation
 
 ## What Users Say
-Aggregated sentiment from reviews.
+
+Summary of user sentiment from reviews and discussions. Include specific feedback themes, common praise, and recurring criticisms. Quote actual users when possible.
 
 ## Who Is It For?
-Target audience and use cases.
+
+- **[Audience 1]:** Why this tool fits their needs
+- **[Audience 2]:** Why this tool fits their needs
+- **[Audience 3]:** Why this tool fits their needs
+- **[Audience 4]:** Why this tool fits their needs
 
 ## Verdict
-Final assessment and recommendation.`;
+
+**Bottom line:** One sentence summary recommendation.
+
+Balanced final assessment covering strengths, limitations, and who should consider this tool. Be specific about use cases where it excels and where alternatives might be better.`;
 }
 
 function extractNameFromUrl(url: string): string {
