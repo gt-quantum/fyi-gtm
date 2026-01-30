@@ -6,6 +6,25 @@ from .config import KIT_API_KEY
 KIT_API_BASE = "https://api.kit.com/v4"
 
 
+def extract_preview_text(content: str, max_length: int = 100) -> str:
+    """
+    Extract preview text from the newsletter content.
+    Gets the first meaningful sentence/paragraph, skipping headings and images.
+    """
+    lines = content.strip().split("\n")
+    for line in lines:
+        line = line.strip()
+        # Skip empty lines, headings, and images
+        if not line or line.startswith("#") or line.startswith("!") or line.startswith("---"):
+            continue
+        # Found a content line - clean it up and truncate
+        preview = line.replace("**", "").replace("*", "")
+        if len(preview) > max_length:
+            preview = preview[:max_length-3].rsplit(" ", 1)[0] + "..."
+        return preview
+    return ""
+
+
 def create_draft_broadcast(subject: str, content: str, description: str = None) -> dict:
     """
     Create a draft broadcast in Kit.com.
@@ -22,13 +41,16 @@ def create_draft_broadcast(subject: str, content: str, description: str = None) 
     # Convert markdown to HTML
     html_content = markdown_to_html(content)
 
+    # Extract preview text from first paragraph
+    preview_text = extract_preview_text(content)
+
     payload = {
         "subject": subject,
         "content": html_content,
         "description": description or subject,
         "public": False,  # Don't publish to web
         "send_at": None,  # null = draft, not scheduled
-        "preview_text": subject[:100],
+        "preview_text": preview_text,
     }
 
     response = requests.post(url, json=payload, headers=headers, timeout=30)
