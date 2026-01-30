@@ -312,8 +312,50 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 </style>
 
 <script>
-  document.getElementById('submit-form')?.addEventListener('submit', (e) => {
+  document.getElementById('submit-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    alert('Thank you for your submission! We will review it shortly.');
+
+    const form = e.target as HTMLFormElement;
+    const submitBtn = form.querySelector('.submit-button') as HTMLButtonElement;
+    const originalText = submitBtn.textContent;
+
+    // Disable button and show loading state
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    // Collect form data
+    const formData = new FormData(form);
+    const data = {
+      name: formData.get('name'),
+      url: formData.get('url'),
+      description: formData.get('description'),
+      category: formData.get('category'),
+      pricing: formData.get('pricing'),
+      priceNote: formData.get('priceNote'),
+      tags: formData.get('tags'),
+      contactName: formData.get('contactName'),
+      contactEmail: formData.get('contactEmail'),
+      newsletter: !!formData.get('newsletter'),
+    };
+
+    try {
+      const response = await fetch('/api/tools/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        form.reset();
+        alert('Thank you for your submission! We will review it shortly.');
+      } else {
+        throw new Error('Failed to submit');
+      }
+    } catch (error) {
+      alert('There was an error submitting the form. Please try again or email us directly.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
   });
 </script>
