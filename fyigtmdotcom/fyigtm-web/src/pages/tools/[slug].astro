@@ -8,11 +8,13 @@ export async function getStaticPaths() {
   const toolsEntries = await getCollection('tools');
   return toolsEntries.map(entry => ({
     params: { slug: entry.slug },
-    props: { tool: { ...entry.data, slug: entry.slug } },
+    props: { entry },
   }));
 }
 
-const { tool } = Astro.props;
+const { entry } = Astro.props;
+const tool = { ...entry.data, slug: entry.slug };
+const { Content } = await entry.render();
 
 // Get all tools for related/featured
 const toolsEntries = await getCollection('tools');
@@ -146,64 +148,8 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
         <div class="tab-content">
           <!-- About Tab -->
           <div class="tab-panel active" id="about-panel">
-            <p class="intro-line">{tool.description}</p>
-
-            <div class="faq-section">
-              <h2 class="faq-title">What is {tool.name}?</h2>
-              <p class="faq-content">
-                {tool.name} is a powerful AI tool in the {tool.category} category. {tool.longDescription || tool.description} The platform provides users with innovative features to enhance their productivity and creative workflows.
-              </p>
-            </div>
-
-            <div class="faq-section">
-              <h2 class="faq-title">How does {tool.name} work?</h2>
-              <p class="faq-content">
-                {tool.name} utilizes advanced artificial intelligence models to provide its services. Users can access the platform through their web browser and begin using the AI-powered features immediately. The tool offers both free and premium tiers to accommodate different user needs and budgets.
-              </p>
-            </div>
-
-            {tool.pricing === 'freemium' || tool.pricing === 'paid' ? (
-              <div class="faq-section">
-                <h2 class="faq-title">What are the benefits of upgrading to a premium membership of {tool.name}?</h2>
-                <p class="faq-content">
-                  By upgrading to a premium membership on {tool.name}, users gain access to enhanced features including:
-                </p>
-                <ul class="faq-list">
-                  <li>Access to advanced AI models and capabilities</li>
-                  <li>Faster processing speeds and priority support</li>
-                  <li>Higher usage limits and extended features</li>
-                  <li>Commercial use rights for generated content</li>
-                  <li>Priority access to new features and updates</li>
-                </ul>
-                {tool.priceNote && <p class="faq-content"><strong>Pricing:</strong> {tool.priceNote}</p>}
-              </div>
-            ) : null}
-
-            <div class="faq-section">
-              <h2 class="faq-title">What are the benefits of {tool.name}?</h2>
-              <p class="faq-content">
-                {tool.name} offers several notable benefits for its users:
-              </p>
-              <ul class="faq-list">
-                <li>Easy-to-use interface designed for both beginners and professionals</li>
-                <li>Powered by cutting-edge AI technology</li>
-                <li>Regular updates with new features and improvements</li>
-                <li>Active community and support resources</li>
-                <li>Integration capabilities with other tools and workflows</li>
-              </ul>
-            </div>
-
-            <div class="faq-section">
-              <h2 class="faq-title">What are the limitations of {tool.name}?</h2>
-              <p class="faq-content">
-                While {tool.name} offers valuable features, users should be aware of certain limitations:
-              </p>
-              <ul class="faq-list">
-                <li>Some advanced features may require a premium subscription</li>
-                <li>Results quality depends on input quality and specificity</li>
-                <li>Internet connection required for cloud-based features</li>
-                <li>Usage limits may apply depending on the subscription tier</li>
-              </ul>
+            <div class="tool-content prose">
+              <Content />
             </div>
           </div>
 
@@ -606,41 +552,75 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
     display: block;
   }
 
-  .intro-line {
-    font-size: 1.1rem;
-    color: var(--color-text);
-    margin: 0 0 32px;
-    font-weight: 500;
+  /* Prose Content Styling for Markdown */
+  .tool-content.prose {
+    font-size: 0.95rem;
+    line-height: 1.75;
+    color: var(--color-text-muted);
   }
 
-  .faq-section {
-    margin-bottom: 32px;
-  }
-
-  .faq-title {
-    font-size: 1.25rem;
+  .tool-content.prose h2 {
+    font-size: 1.4rem;
     font-weight: 600;
     color: var(--color-text);
-    margin: 0 0 12px;
+    margin: 2rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .faq-content {
-    font-size: 0.95rem;
-    color: var(--color-text-muted);
-    line-height: 1.7;
-    margin: 0 0 12px;
+  .tool-content.prose h2:first-child {
+    margin-top: 0;
   }
 
-  .faq-list {
-    margin: 12px 0;
-    padding-left: 24px;
+  .tool-content.prose h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 1.5rem 0 0.75rem;
   }
 
-  .faq-list li {
-    font-size: 0.95rem;
-    color: var(--color-text-muted);
-    line-height: 1.7;
-    margin-bottom: 8px;
+  .tool-content.prose p {
+    margin: 0 0 1rem;
+  }
+
+  .tool-content.prose ul, .tool-content.prose ol {
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+  }
+
+  .tool-content.prose li {
+    margin-bottom: 0.5rem;
+  }
+
+  .tool-content.prose strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .tool-content.prose blockquote {
+    border-left: 3px solid var(--color-primary);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    color: var(--color-text);
+  }
+
+  .tool-content.prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+
+  .tool-content.prose th, .tool-content.prose td {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .tool-content.prose th {
+    background: var(--color-background-secondary);
+    font-weight: 600;
+    color: var(--color-text);
   }
 
   /* Alternatives */
