@@ -1,3 +1,4 @@
+import time
 import anthropic
 
 from .config import ANTHROPIC_API_KEY, RESEARCH_MODEL, WRITING_MODEL, MAX_RESEARCH_TOKENS, MAX_WRITING_TOKENS
@@ -6,6 +7,19 @@ from .config import ANTHROPIC_API_KEY, RESEARCH_MODEL, WRITING_MODEL, MAX_RESEAR
 def get_client():
     """Create and return Anthropic client."""
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+
+def call_with_retry(func, max_retries=3):
+    """Call a function with exponential backoff on rate limit errors."""
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except anthropic.RateLimitError as e:
+            if attempt == max_retries - 1:
+                raise
+            wait_time = 60 * (attempt + 1)  # 60s, 120s, 180s
+            print(f"Rate limited, waiting {wait_time}s before retry {attempt + 2}/{max_retries}...")
+            time.sleep(wait_time)
 
 
 def research_topic(client, topic: str, description: str | None = None) -> str:
@@ -17,14 +31,15 @@ def research_topic(client, topic: str, description: str | None = None) -> str:
     if description:
         context += f"\nContext: {description}"
 
-    response = client.messages.create(
-        model=RESEARCH_MODEL,
-        max_tokens=MAX_RESEARCH_TOKENS,
-        tools=[{"type": "web_search_20250305", "name": "web_search"}],
-        messages=[
-            {
-                "role": "user",
-                "content": f"""You are a research assistant preparing a brief for a newsletter writer.
+    def make_request():
+        return client.messages.create(
+            model=RESEARCH_MODEL,
+            max_tokens=MAX_RESEARCH_TOKENS,
+            tools=[{"type": "web_search_20250305", "name": "web_search"}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""You are a research assistant preparing a brief for a newsletter writer.
 
 {context}
 
@@ -42,9 +57,11 @@ Compile your findings into a structured research brief with:
 - Suggested angles for the newsletter
 
 Be factual and cite your sources.""",
-            }
-        ],
-    )
+                }
+            ],
+        )
+
+    response = call_with_retry(make_request)
 
     # Extract text from response
     text_parts = [block.text for block in response.content if hasattr(block, "text")]
@@ -56,13 +73,14 @@ def write_newsletter(client, topic: str, research_brief: str, template: str) -> 
     Write a newsletter based on research.
     Uses a fresh context (no web search access).
     """
-    response = client.messages.create(
-        model=WRITING_MODEL,
-        max_tokens=MAX_WRITING_TOKENS,
-        messages=[
-            {
-                "role": "user",
-                "content": f"""You are a skilled newsletter writer. Write an engaging newsletter based on the research provided.
+    def make_request():
+        return client.messages.create(
+            model=WRITING_MODEL,
+            max_tokens=MAX_WRITING_TOKENS,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""You are a skilled newsletter writer. Write an engaging newsletter based on the research provided.
 
 TOPIC: {topic}
 
@@ -82,9 +100,11 @@ Guidelines:
 - Format in Markdown
 
 Write the newsletter now:""",
-            }
-        ],
-    )
+                }
+            ],
+        )
+
+    response = call_with_retry(make_request)
 
     text_parts = [block.text for block in response.content if hasattr(block, "text")]
     return "\n".join(text_parts)
