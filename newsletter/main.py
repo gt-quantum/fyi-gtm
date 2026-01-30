@@ -11,6 +11,7 @@ Runs weekly via GitHub Actions to:
 """
 
 import sys
+import time
 from pathlib import Path
 
 from . import config
@@ -65,6 +66,10 @@ def run():
         )
         db.update_run(supabase, run_id, research_brief=research_brief)
         print("Research complete.")
+
+        # Wait to avoid rate limit (10k tokens/min on lower tiers)
+        print("Waiting 60s to avoid rate limit...")
+        time.sleep(60)
 
         # Step 4: Write the newsletter
         print("Writing newsletter with Claude...")
