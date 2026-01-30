@@ -26,7 +26,11 @@ def create_draft_post(title: str, content: str, subtitle: str | None = None) -> 
     }
 
     response = requests.post(url, json=payload, headers=headers, timeout=30)
-    response.raise_for_status()
+
+    if not response.ok:
+        print(f"Beehiiv API error: {response.status_code}")
+        print(f"Response: {response.text}")
+        response.raise_for_status()
 
     return response.json()
 
