@@ -99,6 +99,25 @@ export default function TipsManager({ token }) {
     }
   };
 
+  const handleMarkUnused = async (item) => {
+    if (!confirm('Mark this tip as unused so it can be used again?')) return;
+    try {
+      const response = await fetch(`/api/admin/tips/${item.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ used_at: null }),
+      });
+      if (!response.ok) throw new Error('Failed to mark tip as unused');
+      const updated = await response.json();
+      setTips((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleSubmit = async (formData) => {
     const url = editingTip ? `/api/admin/tips/${editingTip.id}` : '/api/admin/tips';
     const method = editingTip ? 'PUT' : 'POST';
@@ -143,6 +162,7 @@ export default function TipsManager({ token }) {
         loading={loading}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onMarkUnused={handleMarkUnused}
         emptyMessage="No tips yet. Add your first tip to get started."
       />
 

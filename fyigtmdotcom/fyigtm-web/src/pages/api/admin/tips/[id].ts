@@ -19,13 +19,12 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     const runtime = (locals as any).runtime;
     const supabase = getSupabaseAdmin(runtime?.env);
 
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
+    const updateData: Record<string, unknown> = {};
 
     if (body.tip !== undefined) updateData.tip = body.tip;
     if (body.context !== undefined) updateData.context = body.context;
     if (body.category !== undefined) updateData.category = body.category;
+    if ('used_at' in body) updateData.used_at = body.used_at;
 
     const { data, error } = await supabase
       .from('tips_backlog')

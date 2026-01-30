@@ -96,6 +96,25 @@ export default function TechManager({ token }) {
     }
   };
 
+  const handleMarkUnused = async (item) => {
+    if (!confirm(`Mark "${item.name}" as unused so it can be used again?`)) return;
+    try {
+      const response = await fetch(`/api/admin/tech/${item.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ used_at: null }),
+      });
+      if (!response.ok) throw new Error('Failed to mark tech as unused');
+      const updated = await response.json();
+      setTech((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleSubmit = async (formData) => {
     const url = editingTech ? `/api/admin/tech/${editingTech.id}` : '/api/admin/tech';
     const method = editingTech ? 'PUT' : 'POST';
@@ -140,6 +159,7 @@ export default function TechManager({ token }) {
         loading={loading}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onMarkUnused={handleMarkUnused}
         emptyMessage="No tech items yet. Add your first tech item to get started."
       />
 

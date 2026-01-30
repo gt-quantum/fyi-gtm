@@ -101,6 +101,25 @@ export default function TopicsManager({ token }) {
     }
   };
 
+  const handleMarkUnused = async (topic) => {
+    if (!confirm(`Mark "${topic.topic}" as unused so it can be used again?`)) return;
+    try {
+      const response = await fetch(`/api/admin/topics/${topic.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ used_at: null }),
+      });
+      if (!response.ok) throw new Error('Failed to mark topic as unused');
+      const updated = await response.json();
+      setTopics((prev) => prev.map((t) => (t.id === topic.id ? updated : t)));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleSubmit = async (formData) => {
     const url = editingTopic ? `/api/admin/topics/${editingTopic.id}` : '/api/admin/topics';
     const method = editingTopic ? 'PUT' : 'POST';
@@ -146,6 +165,7 @@ export default function TopicsManager({ token }) {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onToggleActive={handleToggleActive}
+        onMarkUnused={handleMarkUnused}
         emptyMessage="No topics yet. Add your first topic to get started."
       />
 

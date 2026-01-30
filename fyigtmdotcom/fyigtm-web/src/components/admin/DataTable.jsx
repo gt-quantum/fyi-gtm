@@ -6,6 +6,7 @@ export default function DataTable({
   onEdit,
   onDelete,
   onToggleActive,
+  onMarkUnused,
   loading,
   emptyMessage = 'No data available',
 }) {
@@ -80,6 +81,14 @@ export default function DataTable({
                     onClick={() => onToggleActive(row)}
                   >
                     {row.active ? 'Deactivate' : 'Activate'}
+                  </button>
+                )}
+                {onMarkUnused && row.used_at && (
+                  <button
+                    className="action-btn reuse-btn"
+                    onClick={() => onMarkUnused(row)}
+                  >
+                    Reuse
                   </button>
                 )}
                 {onDelete && (
