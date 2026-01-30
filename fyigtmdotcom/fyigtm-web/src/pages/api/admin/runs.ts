@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ request, locals }) => {
     const { data, error } = await supabase
       .from('newsletter_runs')
       .select('*, newsletter_topics(topic)')
-      .order('run_date', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(50);
 
     if (error) throw error;
