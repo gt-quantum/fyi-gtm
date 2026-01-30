@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import DataTable from './DataTable';
-import FormModal from './FormModal';
 import ToolDraftEditor from './ToolDraftEditor';
+
+const STATUS_CONFIG = {
+  pending: { label: 'New', color: '#6b7280' },
+  researching: { label: 'Researching...', color: '#f59e0b' },
+  draft: { label: 'Ready for Review', color: '#3b82f6' },
+  approved: { label: 'Approved', color: '#10b981' },
+  published: { label: 'Published', color: '#8b5cf6' },
+};
 
 const COLUMNS = [
   { key: 'name', label: 'Name', render: (value, row) => value || row.slug || 'Untitled' },
@@ -21,24 +28,18 @@ const COLUMNS = [
     key: 'status',
     label: 'Status',
     render: (value) => {
-      const colors = {
-        pending: '#6b7280',
-        researching: '#f59e0b',
-        draft: '#3b82f6',
-        approved: '#10b981',
-        published: '#8b5cf6',
-      };
+      const config = STATUS_CONFIG[value] || { label: value, color: '#6b7280' };
       return (
         <span
           style={{
             padding: '2px 8px',
             borderRadius: '4px',
             fontSize: '12px',
-            backgroundColor: colors[value] || '#6b7280',
+            backgroundColor: config.color,
             color: 'white',
           }}
         >
-          {value}
+          {config.label}
         </span>
       );
     },
@@ -51,25 +52,18 @@ const COLUMNS = [
   },
 ];
 
-const FORM_FIELDS = [
-  { name: 'url', label: 'Tool Website URL', type: 'url', required: true, placeholder: 'https://example.com' },
-  { name: 'name', label: 'Tool Name (optional)', type: 'text', placeholder: 'Auto-detected if not provided' },
-  {
-    name: 'extra_sources',
-    label: 'Extra Research URLs (optional)',
-    type: 'textarea',
-    rows: 3,
-    placeholder: 'One URL per line for additional research...',
-  },
-];
-
 export default function ToolDraftsManager({ token }) {
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingDraft, setEditingDraft] = useState(null);
   const [viewingDraft, setViewingDraft] = useState(null);
+
+  // Form state
+  const [formUrl, setFormUrl] = useState('');
+  const [formName, setFormName] = useState('');
+  const [formSaving, setFormSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     fetchDrafts();
@@ -91,7 +85,9 @@ export default function ToolDraftsManager({ token }) {
   };
 
   const handleAdd = () => {
-    setEditingDraft(null);
+    setFormUrl('');
+    setFormName('');
+    setFormError('');
     setModalOpen(true);
   };
 
@@ -114,16 +110,7 @@ export default function ToolDraftsManager({ token }) {
     }
   };
 
-  const handleSubmit = async (formData) => {
-    // Parse extra_sources from newline-separated text to array
-    let extraSources = null;
-    if (formData.extra_sources) {
-      extraSources = formData.extra_sources
-        .split('\n')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-    }
-
+  const createDraft = async () => {
     const response = await fetch('/api/admin/tool-drafts', {
       method: 'POST',
       headers: {
@@ -131,37 +118,60 @@ export default function ToolDraftsManager({ token }) {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        url: formData.url,
-        name: formData.name || null,
-        extra_sources: extraSources,
+        url: formUrl,
+        name: formName || null,
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create draft');
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to create draft');
     }
 
-    const saved = await response.json();
-    setDrafts((prev) => [saved, ...prev]);
+    return response.json();
   };
 
-  const handleResearch = async (draft) => {
-    if (!confirm(`Start AI research for "${draft.name || draft.slug || 'this tool'}"? This will call the Claude API.`)) return;
+  const handleSaveDraftOnly = async () => {
+    if (!formUrl) {
+      setFormError('URL is required');
+      return;
+    }
+
+    setFormSaving(true);
+    setFormError('');
 
     try {
-      const response = await fetch(`/api/admin/tool-drafts/${draft.id}/research`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) throw new Error('Failed to trigger research');
-
-      const result = await response.json();
-      setDrafts((prev) => prev.map((d) => (d.id === result.draft.id ? result.draft : d)));
-      alert(result.message);
+      const saved = await createDraft();
+      setDrafts((prev) => [saved, ...prev]);
+      setModalOpen(false);
     } catch (err) {
-      setError(err.message);
+      setFormError(err.message);
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
+  const handleSaveAndResearch = async () => {
+    if (!formUrl) {
+      setFormError('URL is required');
+      return;
+    }
+
+    setFormSaving(true);
+    setFormError('');
+
+    try {
+      // First create the draft
+      const saved = await createDraft();
+      setDrafts((prev) => [saved, ...prev]);
+      setModalOpen(false);
+
+      // Then open it and start research
+      setViewingDraft({ ...saved, _startResearch: true });
+    } catch (err) {
+      setFormError(err.message);
+    } finally {
+      setFormSaving(false);
     }
   };
 
@@ -201,8 +211,8 @@ export default function ToolDraftsManager({ token }) {
           fetchDrafts();
         }}
         onSave={handleSaveDraft}
-        onResearch={() => handleResearch(viewingDraft)}
         onPublish={() => handlePublish(viewingDraft)}
+        startResearchImmediately={viewingDraft._startResearch}
       />
     );
   }
@@ -220,7 +230,7 @@ export default function ToolDraftsManager({ token }) {
 
       <div style={{ marginBottom: '16px' }}>
         <p style={{ color: '#6b7280', fontSize: '14px' }}>
-          Submit a tool URL to start the review process. Click on a draft to edit its content.
+          Add a tool URL to create a draft. Click on any draft to edit or start research.
         </p>
       </div>
 
@@ -233,15 +243,75 @@ export default function ToolDraftsManager({ token }) {
         emptyMessage="No tool drafts yet. Add a tool URL to get started."
       />
 
-      <FormModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleSubmit}
-        title="Add New Tool"
-        fields={FORM_FIELDS}
-        initialData={{}}
-        submitLabel="Create Draft"
-      />
+      {/* Custom Add Tool Modal */}
+      {modalOpen && (
+        <div className="modal-overlay" onClick={() => !formSaving && setModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add New Tool</h2>
+              <button className="modal-close" onClick={() => !formSaving && setModalOpen(false)} disabled={formSaving}>
+                &times;
+              </button>
+            </div>
+            <div style={{ padding: '24px' }}>
+              {formError && <div className="form-error">{formError}</div>}
+
+              <div className="form-group">
+                <label className="form-label">
+                  Tool Website URL <span className="required">*</span>
+                </label>
+                <input
+                  type="url"
+                  className="form-input"
+                  value={formUrl}
+                  onChange={(e) => setFormUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  disabled={formSaving}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Tool Name (optional)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="Auto-detected if not provided"
+                  disabled={formSaving}
+                />
+              </div>
+
+              <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setModalOpen(false)}
+                  disabled={formSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleSaveDraftOnly}
+                  disabled={formSaving}
+                >
+                  {formSaving ? 'Saving...' : 'Save Draft'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleSaveAndResearch}
+                  disabled={formSaving}
+                >
+                  {formSaving ? 'Saving...' : 'Save & Research'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

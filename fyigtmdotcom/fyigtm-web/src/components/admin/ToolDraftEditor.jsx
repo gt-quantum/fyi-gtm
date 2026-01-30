@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const PRICING_OPTIONS = [
   { value: 'free', label: 'Free' },
@@ -7,12 +7,30 @@ const PRICING_OPTIONS = [
   { value: 'trial', label: 'Trial' },
 ];
 
-export default function ToolDraftEditor({ token, draft: initialDraft, onBack, onSave, onResearch, onPublish }) {
+const STATUS_CONFIG = {
+  pending: { label: 'New', color: '#6b7280' },
+  researching: { label: 'Researching...', color: '#f59e0b' },
+  draft: { label: 'Ready for Review', color: '#3b82f6' },
+  approved: { label: 'Approved', color: '#10b981' },
+  published: { label: 'Published', color: '#8b5cf6' },
+};
+
+export default function ToolDraftEditor({ token, draft: initialDraft, onBack, onSave, onPublish, startResearchImmediately }) {
   const [draft, setDraft] = useState(initialDraft);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('content');
+
+  // Research state
+  const [researching, setResearching] = useState(false);
+  const [researchProgress, setResearchProgress] = useState('');
+  const [researchLogs, setResearchLogs] = useState([]);
+  const hasStartedResearch = useRef(false);
+
+  // Determine which tabs to show
+  const hasContent = draft.generated_content && draft.generated_content.trim().length > 0;
+  const hasResearchData = draft.research_data && Object.keys(draft.research_data).length > 0;
 
   // Initialize frontmatter if not present
   useEffect(() => {
@@ -36,6 +54,107 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
       }));
     }
   }, []);
+
+  // Auto-start research if requested
+  useEffect(() => {
+    if (startResearchImmediately && !hasStartedResearch.current && !hasContent) {
+      hasStartedResearch.current = true;
+      handleResearch();
+    }
+  }, [startResearchImmediately]);
+
+  const addLog = (message) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setResearchLogs((prev) => [...prev, `[${timestamp}] ${message}`]);
+  };
+
+  const handleResearch = async () => {
+    setResearching(true);
+    setError('');
+    setResearchLogs([]);
+    setResearchProgress('Starting research...');
+    addLog('Starting research process');
+
+    try {
+      // Update status to researching
+      setResearchProgress('Initializing...');
+      addLog('Updating draft status');
+
+      const response = await fetch(`/api/admin/tool-drafts/${draft.id}/research`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ runResearch: true }),
+      });
+
+      // Handle streaming response or regular response
+      const contentType = response.headers.get('content-type');
+
+      if (contentType && contentType.includes('text/event-stream')) {
+        // Handle streaming updates
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          const lines = text.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.progress) {
+                  setResearchProgress(data.progress);
+                  addLog(data.progress);
+                }
+                if (data.draft) {
+                  setDraft(data.draft);
+                  onSave(data.draft);
+                }
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+              } catch (e) {
+                // Ignore parse errors for partial data
+              }
+            }
+          }
+        }
+      } else {
+        // Handle regular JSON response
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Research failed');
+        }
+
+        if (result.draft) {
+          setDraft(result.draft);
+          onSave(result.draft);
+          addLog('Research completed successfully');
+        }
+
+        if (result.logs) {
+          result.logs.forEach((log) => addLog(log));
+        }
+      }
+
+      setResearchProgress('');
+      setSuccess('Research completed! Review the generated content.');
+      setActiveTab('content');
+    } catch (err) {
+      setError(err.message);
+      addLog(`Error: ${err.message}`);
+      setResearchProgress('');
+    } finally {
+      setResearching(false);
+    }
+  };
 
   const handleChange = (field, value) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -113,74 +232,125 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
   };
 
   const frontmatter = draft.frontmatter || {};
+  const statusConfig = STATUS_CONFIG[draft.status] || { label: draft.status, color: '#6b7280' };
+
+  // Build available tabs based on data
+  const tabs = [];
+  if (hasContent) {
+    tabs.push({ id: 'content', label: 'Content' });
+    tabs.push({ id: 'frontmatter', label: 'Metadata' });
+  }
+  if (hasResearchData) {
+    tabs.push({ id: 'research', label: 'Research Data' });
+  }
+  tabs.push({ id: 'logs', label: 'Logs' });
+
+  // Default to appropriate tab
+  useEffect(() => {
+    if (!hasContent && !researching && activeTab === 'content') {
+      setActiveTab('logs');
+    }
+  }, [hasContent, researching]);
 
   return (
     <div>
       <div className="section-header">
         <button className="back-button" onClick={onBack} style={{ marginRight: '16px' }}>
-          &larr; Back to Drafts
+          &larr; Back
         </button>
-        <h2 className="section-title">{draft.name || draft.slug || 'Edit Draft'}</h2>
+        <h2 className="section-title">{draft.name || draft.slug || draft.url}</h2>
       </div>
 
       {error && <div className="form-error">{error}</div>}
       {success && <div className="success-message">{success}</div>}
 
-      <div className="draft-status-bar" style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+      {/* Status and Action Bar */}
+      <div className="draft-status-bar" style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ color: '#6b7280' }}>Status:</span>
         <span
           style={{
             padding: '4px 12px',
             borderRadius: '4px',
             fontSize: '13px',
-            backgroundColor:
-              draft.status === 'approved' ? '#10b981' : draft.status === 'published' ? '#8b5cf6' : draft.status === 'draft' ? '#3b82f6' : '#6b7280',
+            backgroundColor: statusConfig.color,
             color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}
         >
-          {draft.status}
+          {researching && (
+            <span className="spinner" style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          )}
+          {researching ? researchProgress || 'Researching...' : statusConfig.label}
         </span>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-          {draft.status === 'pending' && (
-            <button className="action-btn" onClick={onResearch} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '8px 16px' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {!hasContent && !researching && (
+            <button
+              className="action-btn"
+              onClick={handleResearch}
+              style={{ backgroundColor: '#f59e0b', color: 'white', padding: '8px 16px', border: 'none' }}
+            >
               Start Research
             </button>
           )}
-          {(draft.status === 'draft' || draft.status === 'researching') && (
-            <button className="action-btn" onClick={handleApprove} style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px' }}>
+          {hasContent && !researching && (
+            <button
+              className="action-btn"
+              onClick={handleResearch}
+              style={{ backgroundColor: '#6b7280', color: 'white', padding: '8px 16px', border: 'none' }}
+            >
+              Re-run Research
+            </button>
+          )}
+          {hasContent && (draft.status === 'draft' || draft.status === 'pending') && (
+            <button
+              className="action-btn"
+              onClick={handleApprove}
+              disabled={saving}
+              style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', border: 'none' }}
+            >
               Approve
             </button>
           )}
-          {(draft.status === 'approved' || draft.status === 'draft') && (
-            <button className="action-btn" onClick={onPublish} style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px' }}>
+          {hasContent && (draft.status === 'approved' || draft.status === 'draft') && (
+            <button
+              className="action-btn"
+              onClick={onPublish}
+              style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', border: 'none' }}
+            >
               Publish to GitHub
             </button>
           )}
         </div>
       </div>
 
-      <div className="draft-tabs" style={{ borderBottom: '1px solid #e5e7eb', marginBottom: '16px' }}>
-        {['content', 'frontmatter', 'research'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '8px 16px',
-              border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
-              background: 'none',
-              cursor: 'pointer',
-              color: activeTab === tab ? '#3b82f6' : '#6b7280',
-              fontWeight: activeTab === tab ? '600' : '400',
-            }}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
+      {/* Tabs */}
+      {tabs.length > 0 && (
+        <div className="draft-tabs" style={{ borderBottom: '1px solid #e5e7eb', marginBottom: '16px' }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderBottom: activeTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
+                background: 'none',
+                cursor: 'pointer',
+                color: activeTab === tab.id ? '#3b82f6' : '#6b7280',
+                fontWeight: activeTab === tab.id ? '600' : '400',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {activeTab === 'content' && (
+      {/* Content Tab */}
+      {activeTab === 'content' && hasContent && (
         <div className="config-form">
           <div className="form-group">
             <label className="form-label">Tool Name</label>
@@ -224,13 +394,14 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
 
           <div className="config-actions">
             <button type="button" className="save-button" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Draft'}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>
       )}
 
-      {activeTab === 'frontmatter' && (
+      {/* Frontmatter/Metadata Tab */}
+      {activeTab === 'frontmatter' && hasContent && (
         <div className="config-form">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="form-group">
@@ -357,38 +528,108 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
 
           <div className="config-actions" style={{ marginTop: '16px' }}>
             <button type="button" className="save-button" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Draft'}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>
       )}
 
-      {activeTab === 'research' && (
+      {/* Research Data Tab */}
+      {activeTab === 'research' && hasResearchData && (
         <div className="config-form">
           <div className="form-group">
-            <label className="form-label">Research Data (JSON)</label>
+            <label className="form-label">Research Data</label>
             <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '8px' }}>
-              Raw data gathered from research sources. This is populated by the research script.
+              Raw data gathered during research. This was used to generate the content.
             </p>
             <textarea
               className="form-textarea"
-              value={draft.research_data ? JSON.stringify(draft.research_data, null, 2) : 'No research data yet. Click "Start Research" to begin.'}
+              value={JSON.stringify(draft.research_data, null, 2)}
               readOnly
               rows={20}
               style={{ fontFamily: 'monospace', fontSize: '12px', backgroundColor: '#f9fafb' }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Logs Tab */}
+      {activeTab === 'logs' && (
+        <div className="config-form">
+          <div className="form-group">
+            <label className="form-label">Activity Log</label>
+            <div
+              style={{
+                backgroundColor: '#1a1a2e',
+                color: '#a0a0a0',
+                padding: '16px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                minHeight: '300px',
+                maxHeight: '500px',
+                overflowY: 'auto',
+                borderRadius: '4px',
+              }}
+            >
+              {researchLogs.length === 0 && !researching && (
+                <div style={{ color: '#6b7280' }}>
+                  No activity yet. Click "Start Research" to begin.
+                </div>
+              )}
+              {researchLogs.map((log, i) => (
+                <div key={i} style={{ marginBottom: '4px' }}>
+                  {log}
+                </div>
+              ))}
+              {researching && (
+                <div style={{ color: '#f59e0b' }}>
+                  {researchProgress || 'Processing...'}
+                  <span className="blink">_</span>
+                </div>
+              )}
+            </div>
+          </div>
 
           {draft.error_message && (
             <div className="form-group">
               <label className="form-label" style={{ color: '#ef4444' }}>
-                Error Message
+                Last Error
               </label>
-              <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '4px', color: '#dc2626' }}>{draft.error_message}</div>
+              <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '4px', color: '#dc2626', fontSize: '13px' }}>
+                {draft.error_message}
+              </div>
+            </div>
+          )}
+
+          {!hasContent && !researching && (
+            <div style={{ marginTop: '24px', textAlign: 'center' }}>
+              <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+                This tool hasn't been researched yet.
+              </p>
+              <button
+                className="btn-primary"
+                onClick={handleResearch}
+                style={{ padding: '12px 24px' }}
+              >
+                Start Research
+              </button>
             </div>
           )}
         </div>
       )}
+
+      {/* CSS for spinner animation */}
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .blink {
+          animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+          50% { opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
