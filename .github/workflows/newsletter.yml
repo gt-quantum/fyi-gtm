@@ -32,3 +32,45 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m newsletter.main
+
+      - name: Notify Slack on success
+        if: success() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "✅ Newsletter generated and scheduled!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *Newsletter Ready for Review*\n\nThe weekly newsletter has been generated and scheduled for Friday 10 AM ET.\n\n<https://app.kit.com/broadcasts|Review in Kit.com>"
+                  }
+                }
+              ]
+            }'
+
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-type: application/json' \
+              --data '{
+                "text": "❌ Newsletter generation failed!",
+                "blocks": [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "❌ *Newsletter Failed*\n\nThe weekly newsletter automation encountered an error.\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>"
+                    }
+                  }
+                ]
+              }'
+          fi
