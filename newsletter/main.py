@@ -4,26 +4,18 @@ Newsletter Automation Script
 
 Runs weekly via GitHub Actions to:
 1. Pull an available topic from Supabase
-2. Research the topic using Claude with web search
-3. Write a newsletter from the research
-4. Save everything to Supabase
-5. Create a draft in beehiiv
+2. Generate a newsletter with quick web lookups
+3. Save content to Supabase
+4. Create a draft in beehiiv
 """
 
 import sys
-import time
 from pathlib import Path
 
 from . import config
 from . import supabase_client as db
 from . import claude_client as claude
 from . import beehiiv_client as beehiiv
-
-
-def load_template() -> str:
-    """Load the newsletter template."""
-    template_path = Path(__file__).parent / "templates" / "newsletter_template.md"
-    return template_path.read_text()
 
 
 def run():
@@ -57,37 +49,22 @@ def run():
     print(f"Created run: {run_id}")
 
     try:
-        # Step 3: Research the topic
-        print("Researching topic with Claude...")
-        db.update_run(supabase, run_id, status="research")
-
-        research_brief = claude.research_topic(
-            anthropic, topic["topic"], topic.get("description")
-        )
-        db.update_run(supabase, run_id, research_brief=research_brief)
-        print("Research complete.")
-
-        # Wait to avoid rate limit (10k tokens/min on lower tiers)
-        print("Waiting 60s to avoid rate limit...")
-        time.sleep(60)
-
-        # Step 4: Write the newsletter
-        print("Writing newsletter with Claude...")
+        # Step 3: Generate newsletter (single call with web search)
+        print("Generating newsletter...")
         db.update_run(supabase, run_id, status="writing")
 
-        template = load_template()
-        newsletter_content = claude.write_newsletter(
-            anthropic, topic["topic"], research_brief, template
+        newsletter_content = claude.generate_newsletter(
+            anthropic, topic["topic"], topic.get("description")
         )
         db.update_run(supabase, run_id, newsletter_content=newsletter_content)
-        print("Newsletter written.")
+        print("Newsletter generated.")
 
-        # Step 5: Create beehiiv draft
+        # Step 4: Create beehiiv draft
         print("Creating draft in beehiiv...")
 
         # Extract title from newsletter (first # heading) or use topic
         lines = newsletter_content.strip().split("\n")
-        title = topic["topic"]
+        title = f"FYI GTM: {topic['topic']}"
         for line in lines:
             if line.startswith("# "):
                 title = line[2:].strip()
@@ -101,7 +78,7 @@ def run():
         beehiiv_post_id = beehiiv_response.get("data", {}).get("id", "unknown")
         print(f"Created beehiiv draft: {beehiiv_post_id}")
 
-        # Step 6: Mark complete
+        # Step 5: Mark complete
         db.mark_topic_used(supabase, topic["id"])
         db.complete_run(supabase, run_id, beehiiv_post_id)
 

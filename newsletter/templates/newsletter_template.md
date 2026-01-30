@@ -1,46 +1,19 @@
-# Newsletter Template
+# FYI GTM Newsletter Template
 
-Use this structure as a guide. Customize sections as needed.
+## 1️⃣ Sales Tech Spotlight
+Feature ONE sales technology with recent relevance.
+- What it does
+- Why it matters now
 
----
+## 2️⃣ Two Tips to Try This Week
+1. **Tip one** - actionable advice
+2. **Tip two** - actionable advice
 
-## [Catchy Title Related to Topic]
-
-**Opening Hook** (1-2 sentences)
-Start with a surprising fact, bold statement, or relatable scenario.
-
----
-
-### The Big Picture
-
-What's happening and why it matters. (2-3 paragraphs)
-
----
-
-### Key Insights
-
-- **Insight 1**: Brief explanation
-- **Insight 2**: Brief explanation
-- **Insight 3**: Brief explanation
+## 3️⃣ Three Takeaways
+1. Quick insight or learning
+2. Quick insight or learning
+3. Quick insight or learning
 
 ---
 
-### What This Means For You
-
-Practical implications and actionable takeaways. (2-3 bullet points)
-
----
-
-### Looking Ahead
-
-What to watch for next. Brief forward-looking perspective.
-
----
-
-**One Last Thing...**
-
-Thought-provoking question or call to action to drive engagement.
-
----
-
-*Thanks for reading! Hit reply if you have thoughts on this topic.*
+*That's it for this week. Hit reply if you have thoughts!*

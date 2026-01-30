@@ -12,10 +12,8 @@ BEEHIIV_API_KEY = os.environ.get("BEEHIIV_API_KEY")
 BEEHIIV_PUBLICATION_ID = os.environ.get("BEEHIIV_PUBLICATION_ID")
 
 # Newsletter settings
-RESEARCH_MODEL = "claude-sonnet-4-20250514"
 WRITING_MODEL = "claude-sonnet-4-20250514"
-MAX_RESEARCH_TOKENS = 4000
-MAX_WRITING_TOKENS = 4000
+MAX_WRITING_TOKENS = 2000
 
 
 def validate_config():

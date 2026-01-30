@@ -1,7 +1,7 @@
 import time
 import anthropic
 
-from .config import ANTHROPIC_API_KEY, RESEARCH_MODEL, WRITING_MODEL, MAX_RESEARCH_TOKENS, MAX_WRITING_TOKENS
+from .config import ANTHROPIC_API_KEY, WRITING_MODEL, MAX_WRITING_TOKENS
 
 
 def get_client():
@@ -22,82 +22,49 @@ def call_with_retry(func, max_retries=3):
             time.sleep(wait_time)
 
 
-def research_topic(client, topic: str, description: str | None = None) -> str:
+def generate_newsletter(client, topic: str, guidance: str | None = None) -> str:
     """
-    Research a topic using Claude with web search.
-    Returns a research brief.
+    Generate a newsletter with quick web lookups for current context.
+    Single API call that searches and writes in one step.
     """
-    context = f"Topic: {topic}"
-    if description:
-        context += f"\nContext: {description}"
+    topic_context = f"Focus area: {topic}"
+    if guidance:
+        topic_context += f"\nAdditional guidance: {guidance}"
 
-    def make_request():
-        return client.messages.create(
-            model=RESEARCH_MODEL,
-            max_tokens=MAX_RESEARCH_TOKENS,
-            tools=[{"type": "web_search_20250305", "name": "web_search"}],
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"""You are a research assistant preparing a brief for a newsletter writer.
-
-{context}
-
-Research this topic thoroughly using web search. Focus on:
-1. Recent developments and news (last 1-2 weeks if possible)
-2. Key facts and statistics
-3. Notable quotes from experts or companies
-4. Interesting angles or perspectives
-5. Any controversies or debates
-
-Compile your findings into a structured research brief with:
-- Executive summary (2-3 sentences)
-- Key findings (bullet points)
-- Notable quotes (with sources)
-- Suggested angles for the newsletter
-
-Be factual and cite your sources.""",
-                }
-            ],
-        )
-
-    response = call_with_retry(make_request)
-
-    # Extract text from response
-    text_parts = [block.text for block in response.content if hasattr(block, "text")]
-    return "\n".join(text_parts)
-
-
-def write_newsletter(client, topic: str, research_brief: str, template: str) -> str:
-    """
-    Write a newsletter based on research.
-    Uses a fresh context (no web search access).
-    """
     def make_request():
         return client.messages.create(
             model=WRITING_MODEL,
             max_tokens=MAX_WRITING_TOKENS,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 2}],
             messages=[
                 {
                     "role": "user",
-                    "content": f"""You are a skilled newsletter writer. Write an engaging newsletter based on the research provided.
+                    "content": f"""You are a sales newsletter writer. Write this week's newsletter using the structure below.
 
-TOPIC: {topic}
+{topic_context}
 
-RESEARCH BRIEF:
-{research_brief}
+Do 1-2 quick web searches to find current, relevant information, then write the newsletter.
 
-TEMPLATE STRUCTURE:
-{template}
+NEWSLETTER STRUCTURE:
 
-Guidelines:
-- Write in a conversational but authoritative tone
-- Lead with the most interesting or important insight
-- Use short paragraphs for readability
-- Include 2-3 actionable takeaways
-- End with a thought-provoking question or call to action
-- Keep total length around 800-1200 words
+## 1️⃣ Sales Tech Spotlight
+Feature ONE sales technology that has recent relevance. Brief description of what it does and why it matters now.
+
+## 2️⃣ Two Tips to Try This Week
+Two actionable sales tips based on recent trends, news, or best practices. Keep them practical and specific.
+
+## 3️⃣ Three Takeaways
+Three quick insights or learnings from the past week. These can be observations, stats, or lessons relevant to sales professionals.
+
+---
+
+GUIDELINES:
+- Conversational but professional tone
+- Short paragraphs, easy to scan
+- Each section should be concise (2-4 sentences for the spotlight, 1-2 sentences per tip/takeaway)
+- Total length: 400-600 words
 - Format in Markdown
+- End with a brief sign-off
 
 Write the newsletter now:""",
                 }
@@ -106,5 +73,6 @@ Write the newsletter now:""",
 
     response = call_with_retry(make_request)
 
+    # Extract text from response
     text_parts = [block.text for block in response.content if hasattr(block, "text")]
     return "\n".join(text_parts)
