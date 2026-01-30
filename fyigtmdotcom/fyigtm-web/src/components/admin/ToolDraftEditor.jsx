@@ -235,7 +235,11 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
   };
 
   const handlePublish = async () => {
-    if (!confirm(`Publish "${draft.name || draft.slug}" to GitHub? This will create a new tool page.`)) return;
+    const isRepublish = draft.status === 'published';
+    const message = isRepublish
+      ? `Republish "${draft.name || draft.slug}" to GitHub? This will update the existing tool page.`
+      : `Publish "${draft.name || draft.slug}" to GitHub? This will create a new tool page.`;
+    if (!confirm(message)) return;
 
     setError('');
     setSuccess('');
@@ -319,6 +323,11 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
           )}
           {researching ? researchProgress || 'Researching...' : statusConfig.label}
         </span>
+        {draft.published_at && (
+          <span style={{ color: '#6b7280', fontSize: '13px' }}>
+            Last published: {new Date(draft.published_at).toLocaleString()}
+          </span>
+        )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {!hasContent && !researching && (
@@ -357,6 +366,16 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
               style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', border: 'none', opacity: publishing ? 0.7 : 1 }}
             >
               {publishing ? 'Publishing...' : 'Publish to GitHub'}
+            </button>
+          )}
+          {hasContent && draft.status === 'published' && (
+            <button
+              className="action-btn"
+              onClick={handlePublish}
+              disabled={publishing}
+              style={{ backgroundColor: '#6366f1', color: 'white', padding: '8px 16px', border: 'none', opacity: publishing ? 0.7 : 1 }}
+            >
+              {publishing ? 'Republishing...' : 'Republish to GitHub'}
             </button>
           )}
         </div>

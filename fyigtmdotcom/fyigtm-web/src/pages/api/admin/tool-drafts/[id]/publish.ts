@@ -35,9 +35,9 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       });
     }
 
-    if (draft.status !== 'approved' && draft.status !== 'draft') {
+    if (draft.status !== 'approved' && draft.status !== 'draft' && draft.status !== 'published') {
       return new Response(JSON.stringify({
-        error: 'Draft must be approved before publishing',
+        error: 'Draft must be in draft, approved, or published status to publish',
         currentStatus: draft.status
       }), {
         status: 400,
@@ -54,8 +54,35 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       });
     }
 
+    // Ensure all required frontmatter fields have values
+    const completeFrontmatter = {
+      // Required fields with defaults
+      name: draft.frontmatter.name || draft.name || 'Unnamed Tool',
+      description: draft.frontmatter.description || '',
+      url: draft.frontmatter.url || draft.url,
+      pricing: draft.frontmatter.pricing || 'freemium',
+      category: draft.frontmatter.category || 'Uncategorized',
+      tags: draft.frontmatter.tags || [],
+      upvotes: draft.frontmatter.upvotes ?? 0,
+      comments: draft.frontmatter.comments ?? 0,
+      views: draft.frontmatter.views ?? 0,
+      featured: draft.frontmatter.featured ?? false,
+      isNew: draft.frontmatter.isNew ?? true,
+      hasDeal: draft.frontmatter.hasDeal ?? false,
+      isDiscontinued: draft.frontmatter.isDiscontinued ?? false,
+      dateAdded: draft.frontmatter.dateAdded || new Date().toISOString().split('T')[0],
+      // Optional fields (only include if present)
+      ...(draft.frontmatter.logo && { logo: draft.frontmatter.logo }),
+      ...(draft.frontmatter.priceNote && { priceNote: draft.frontmatter.priceNote }),
+      ...(draft.frontmatter.subcategory && { subcategory: draft.frontmatter.subcategory }),
+      ...(draft.frontmatter.isVerified !== undefined && { isVerified: draft.frontmatter.isVerified }),
+      ...(draft.frontmatter.dealDescription && { dealDescription: draft.frontmatter.dealDescription }),
+      // Add dateUpdated on republish
+      ...(draft.status === 'published' && { dateUpdated: new Date().toISOString().split('T')[0] }),
+    };
+
     // Build the markdown file content
-    const frontmatterYaml = buildFrontmatter(draft.frontmatter);
+    const frontmatterYaml = buildFrontmatter(completeFrontmatter);
     const markdownContent = `---\n${frontmatterYaml}---\n\n${draft.generated_content}`;
 
     // Get GitHub credentials from environment
@@ -75,6 +102,10 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
     // Commit the file to GitHub
     const filePath = `fyigtmdotcom/fyigtm-web/src/content/tools/${draft.slug}.md`;
+    const isRepublish = draft.status === 'published';
+    const commitMessage = isRepublish
+      ? `Update tool review: ${draft.name || draft.slug}`
+      : `Add tool review: ${draft.name || draft.slug}`;
 
     try {
       await commitToGitHub({
@@ -83,7 +114,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
         branch: githubBranch,
         path: filePath,
         content: markdownContent,
-        message: `Add tool review: ${draft.name || draft.slug}`,
+        message: commitMessage,
       });
     } catch (githubError: any) {
       return new Response(JSON.stringify({
