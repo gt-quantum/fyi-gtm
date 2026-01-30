@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import UpvoteButton from './UpvoteButton';
 
 export default function ToolListItem({ tool, index = 0 }) {
   const pricingLabels = {
@@ -75,14 +76,7 @@ export default function ToolListItem({ tool, index = 0 }) {
 
         {/* Upvote Count */}
         <div className="upvote-wrapper">
-          <button className="upvote-button" onClick={(e) => e.stopPropagation()}>
-            <div className="upvote-arrow">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" width="14" height="14">
-                <path d="M236.78 211.81A24.34 24.34 0 0 1 215.45 224H40.55a24.34 24.34 0 0 1-21.33-12.19a23.51 23.51 0 0 1 0-23.72l87.43-151.87a24.76 24.76 0 0 1 42.7 0l87.45 151.87a23.51 23.51 0 0 1-.02 23.72Z" />
-              </svg>
-            </div>
-            <span className="upvote-count">{tool.upvotes?.toLocaleString() || 0}</span>
-          </button>
+          <UpvoteButton slug={tool.slug} initialUpvotes={tool.upvotes || 0} variant="list" />
         </div>
       </div>
 
@@ -246,14 +240,14 @@ export default function ToolListItem({ tool, index = 0 }) {
           min-width: 54px;
         }
 
-        .upvote-button:hover {
-          background: var(--color-primary);
-          border-color: var(--color-primary);
+        .upvote-button:not(.voted):hover {
+          background: var(--color-text);
+          border-color: var(--color-text);
         }
 
-        .upvote-button:hover .upvote-arrow,
-        .upvote-button:hover .upvote-count {
-          color: white;
+        .upvote-button:not(.voted):hover .upvote-arrow,
+        .upvote-button:not(.voted):hover .upvote-count {
+          color: var(--color-background);
         }
 
         .upvote-arrow {

@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ToolListItem from '../../components/tools/ToolListItem.jsx';
+import UpvoteButton from '../../components/tools/UpvoteButton.jsx';
 
 export async function getStaticPaths() {
   const toolsEntries = await getCollection('tools');
@@ -99,12 +100,7 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
 
           <!-- Upvote Button (right side) -->
           <div class="upvote-wrapper">
-            <button class="upvote-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" width="14" height="14">
-                <path d="M236.78 211.81A24.34 24.34 0 0 1 215.45 224H40.55a24.34 24.34 0 0 1-21.33-12.19a23.51 23.51 0 0 1 0-23.72l87.43-151.87a24.76 24.76 0 0 1 42.7 0l87.45 151.87a23.51 23.51 0 0 1-.02 23.72Z" />
-              </svg>
-              <span class="upvote-count">{tool.upvotes.toLocaleString()}</span>
-            </button>
+            <UpvoteButton client:load slug={tool.slug} initialUpvotes={tool.upvotes} variant="detail" />
           </div>
         </div>
         <!-- Screenshot Placeholder -->
@@ -371,13 +367,13 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
   }
 
   .upvote-btn:hover {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
+    background: var(--color-text);
+    border-color: var(--color-text);
   }
 
   .upvote-btn:hover svg,
   .upvote-btn:hover .upvote-count {
-    color: white;
+    color: var(--color-background);
   }
 
   .upvote-btn svg {
@@ -423,17 +419,19 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
-    background: var(--color-primary);
-    color: white;
+    background: var(--color-text);
+    color: var(--color-background);
     border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
+    border: 1px solid var(--color-text);
   }
 
   .btn-view-tool:hover {
-    opacity: 0.9;
+    background: transparent;
+    color: var(--color-text);
   }
 
   .btn-view-tool .icon {

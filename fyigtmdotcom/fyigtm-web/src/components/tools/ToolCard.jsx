@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import UpvoteButton from './UpvoteButton';
 
 // Grayscale pricing indicators
 const pricingStyles = {
@@ -63,18 +64,7 @@ const ToolCard = ({
 
         {/* Upvote Button */}
         <div style={styles.upvoteContainer}>
-          <button
-            style={{
-              ...styles.upvoteButton,
-              backgroundColor: isHovered ? 'var(--color-background-tertiary)' : 'var(--color-background-secondary)',
-            }}
-            onClick={(e) => e.preventDefault()}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={styles.upvoteIcon}>
-              <path d="M12 19V5M5 12l7-7 7 7" />
-            </svg>
-            <span style={styles.upvoteCount}>{formatNumber(tool.upvotes)}</span>
-          </button>
+          <UpvoteButton slug={tool.slug} initialUpvotes={tool.upvotes} variant="card" />
         </div>
       </div>
 
