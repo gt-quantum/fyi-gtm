@@ -1,0 +1,72 @@
+import type { APIRoute } from 'astro';
+import { getSupabaseAdmin } from '../../../lib/supabase';
+import { validateToken } from './auth';
+
+export const prerender = false;
+
+export const GET: APIRoute = async ({ request }) => {
+  const authHeader = request.headers.get('Authorization');
+  if (!validateToken(authHeader)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('tips_backlog')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify(data || []), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'Failed to fetch tips backlog' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+};
+
+export const POST: APIRoute = async ({ request }) => {
+  const authHeader = request.headers.get('Authorization');
+  if (!validateToken(authHeader)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const body = await request.json();
+    const supabase = getSupabaseAdmin();
+
+    const { data, error } = await supabase
+      .from('tips_backlog')
+      .insert({
+        tip: body.tip,
+        context: body.context,
+        category: body.category,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify(data), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'Failed to create tip' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+};

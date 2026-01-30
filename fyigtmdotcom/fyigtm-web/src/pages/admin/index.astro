@@ -1,0 +1,605 @@
+---
+import '../../styles/global.css';
+import '../../styles/animations.css';
+import AdminLayout from '../../components/admin/AdminLayout';
+
+export const prerender = false;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Newsletter Admin | FYI GTM</title>
+    <script is:inline>
+      (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <AdminLayout client:load />
+  </body>
+</html>
+
+<style is:global>
+  body {
+    background: var(--color-background);
+    color: var(--color-text);
+  }
+
+  .admin-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+  }
+
+  /* Login Styles */
+  .login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
+  }
+
+  .login-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .login-subtitle {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin: 0 0 24px;
+  }
+
+  .login-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+  }
+
+  .login-button {
+    width: 100%;
+    padding: 14px 24px;
+    background: var(--color-text);
+    color: var(--color-background);
+    border: 1px solid var(--color-text);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .login-button:hover:not(:disabled) {
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .login-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Admin Layout Styles */
+  .admin-layout {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: var(--color-background-secondary);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .admin-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  .logout-button {
+    padding: 8px 16px;
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .logout-button:hover {
+    border-color: var(--color-text);
+    color: var(--color-text);
+  }
+
+  .admin-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 24px;
+    background: var(--color-background-secondary);
+    border-bottom: 1px solid var(--color-border);
+    overflow-x: auto;
+  }
+
+  .tab-button {
+    padding: 16px 24px;
+    background: transparent;
+    color: var(--color-text-muted);
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .tab-button:hover {
+    color: var(--color-text);
+  }
+
+  .tab-button.active {
+    color: var(--color-text);
+    border-bottom-color: var(--color-text);
+  }
+
+  .admin-content {
+    flex: 1;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Form Styles */
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    margin-bottom: 8px;
+  }
+
+  .form-label .required {
+    color: #ef4444;
+    margin-left: 4px;
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-background);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .form-input:focus,
+  .form-textarea:focus,
+  .form-select:focus {
+    border-color: var(--color-text);
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--color-text);
+  }
+
+  .checkbox-label input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-text);
+  }
+
+  .field-error {
+    display: block;
+    font-size: 0.75rem;
+    color: #ef4444;
+    margin-top: 4px;
+  }
+
+  .form-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+  }
+
+  /* Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .modal-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  .modal-close {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .modal-close:hover {
+    color: var(--color-text);
+  }
+
+  .modal-content form {
+    padding: 24px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary {
+    background: var(--color-text);
+    color: var(--color-background);
+    border: 1px solid var(--color-text);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-text);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Table Styles */
+  .table-container {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .data-table th {
+    background: var(--color-background-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+  }
+
+  .data-table th.sortable {
+    cursor: pointer;
+  }
+
+  .data-table th.sortable:hover {
+    color: var(--color-text);
+  }
+
+  .sort-indicator {
+    opacity: 0.7;
+  }
+
+  .data-table td {
+    font-size: 0.875rem;
+    color: var(--color-text);
+  }
+
+  .data-table tr:hover td {
+    background: var(--color-background-secondary);
+  }
+
+  .actions-cell {
+    white-space: nowrap;
+  }
+
+  .action-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-muted);
+    margin-right: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .action-btn:last-child {
+    margin-right: 0;
+  }
+
+  .action-btn:hover {
+    border-color: var(--color-text);
+    color: var(--color-text);
+  }
+
+  .action-btn.delete-btn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
+  .action-btn.toggle-btn.active {
+    border-color: #22c55e;
+    color: #22c55e;
+  }
+
+  .action-btn.toggle-btn.inactive {
+    border-color: var(--color-text-muted);
+  }
+
+  .table-loading,
+  .table-empty {
+    padding: 48px;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+
+  /* Section Styles */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  .add-button {
+    padding: 10px 20px;
+    background: var(--color-text);
+    color: var(--color-background);
+    border: 1px solid var(--color-text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .add-button:hover {
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  /* Config Editor Styles */
+  .config-form {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
+    padding: 32px;
+    max-width: 800px;
+  }
+
+  .config-actions {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .save-button {
+    padding: 14px 32px;
+    background: var(--color-text);
+    color: var(--color-background);
+    border: 1px solid var(--color-text);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .save-button:hover:not(:disabled) {
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .save-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .success-message {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+  }
+
+  /* Run History Styles */
+  .run-content-preview {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .run-status {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 2px;
+  }
+
+  .run-status.completed {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+  }
+
+  .run-status.pending {
+    background: rgba(251, 191, 36, 0.1);
+    color: #fbbf24;
+  }
+
+  .run-status.failed {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .admin-header {
+      padding: 12px 16px;
+    }
+
+    .admin-tabs {
+      padding: 0 16px;
+    }
+
+    .tab-button {
+      padding: 12px 16px;
+    }
+
+    .admin-content {
+      padding: 16px;
+    }
+
+    .config-form {
+      padding: 20px;
+    }
+
+    .modal-content form {
+      padding: 16px;
+    }
+
+    .section-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+  }
+</style>
