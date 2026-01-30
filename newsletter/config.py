@@ -7,9 +7,10 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 # Anthropic
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-# Beehiiv
-BEEHIIV_API_KEY = os.environ.get("BEEHIIV_API_KEY")
-BEEHIIV_PUBLICATION_ID = os.environ.get("BEEHIIV_PUBLICATION_ID")
+# Sender.net
+SENDER_API_KEY = os.environ.get("SENDER_API_KEY")
+SENDER_FROM_NAME = os.environ.get("SENDER_FROM_NAME", "FYI GTM")
+SENDER_REPLY_TO = os.environ.get("SENDER_REPLY_TO")
 
 # Newsletter settings
 WRITING_MODEL = "claude-sonnet-4-20250514"
@@ -22,8 +23,8 @@ def validate_config():
         ("SUPABASE_URL", SUPABASE_URL),
         ("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY),
         ("ANTHROPIC_API_KEY", ANTHROPIC_API_KEY),
-        ("BEEHIIV_API_KEY", BEEHIIV_API_KEY),
-        ("BEEHIIV_PUBLICATION_ID", BEEHIIV_PUBLICATION_ID),
+        ("SENDER_API_KEY", SENDER_API_KEY),
+        ("SENDER_REPLY_TO", SENDER_REPLY_TO),
     ]
     missing = [name for name, value in required if not value]
     if missing:

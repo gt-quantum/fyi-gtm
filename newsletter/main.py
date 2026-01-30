@@ -6,7 +6,7 @@ Runs weekly via GitHub Actions to:
 1. Pull an available topic from Supabase
 2. Generate a newsletter with quick web lookups
 3. Save content to Supabase
-4. Create a draft in beehiiv
+4. Create a draft campaign in sender.net
 """
 
 import sys
@@ -15,7 +15,7 @@ from pathlib import Path
 from . import config
 from . import supabase_client as db
 from . import claude_client as claude
-from . import beehiiv_client as beehiiv
+from . import sender_client as sender
 
 
 def run():
@@ -59,33 +59,29 @@ def run():
         db.update_run(supabase, run_id, newsletter_content=newsletter_content)
         print("Newsletter generated.")
 
-        # Step 4: Create beehiiv draft
-        print("Creating draft in beehiiv...")
+        # Step 4: Create sender.net draft campaign
+        print("Creating draft campaign in sender.net...")
 
-        # Extract title from newsletter (first # heading) or use topic
-        lines = newsletter_content.strip().split("\n")
+        # Use topic as subject, with a title for internal tracking
         title = f"FYI GTM: {topic['topic']}"
-        for line in lines:
-            if line.startswith("# "):
-                title = line[2:].strip()
-                break
+        subject = topic["topic"]
 
-        beehiiv_response = beehiiv.create_draft_post(
+        sender_response = sender.create_draft_campaign(
             title=title,
+            subject=subject,
             content=newsletter_content,
-            subtitle=topic.get("description"),
         )
-        beehiiv_post_id = beehiiv_response.get("data", {}).get("id", "unknown")
-        print(f"Created beehiiv draft: {beehiiv_post_id}")
+        campaign_id = sender_response.get("data", {}).get("id", "unknown")
+        print(f"Created sender.net draft: {campaign_id}")
 
         # Step 5: Mark complete
         db.mark_topic_used(supabase, topic["id"])
-        db.complete_run(supabase, run_id, beehiiv_post_id)
+        db.complete_run(supabase, run_id, campaign_id)
 
         print("Newsletter automation complete!")
         print(f"  Topic: {topic['topic']}")
         print(f"  Run ID: {run_id}")
-        print(f"  Beehiiv Post ID: {beehiiv_post_id}")
+        print(f"  Sender Campaign ID: {campaign_id}")
 
     except Exception as e:
         print(f"Error during newsletter generation: {e}")
