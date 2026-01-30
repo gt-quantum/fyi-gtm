@@ -61,7 +61,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     // Get GitHub credentials from environment
     const env = runtime?.env || process.env;
     const githubToken = env.GITHUB_TOKEN;
-    const githubRepo = env.GITHUB_REPO || 'fyigtm/fyi-gtm';
+    const githubRepo = env.GITHUB_REPO || 'gt-quantum/fyi-gtm';
     const githubBranch = env.GITHUB_BRANCH || 'main';
 
     if (!githubToken) {
@@ -163,6 +163,7 @@ async function commitToGitHub(options: {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'FYI-GTM-Admin',
       },
     });
     if (existingResponse.ok) {
@@ -183,6 +184,7 @@ async function commitToGitHub(options: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
+      'User-Agent': 'FYI-GTM-Admin',
     },
     body: JSON.stringify({
       message,
