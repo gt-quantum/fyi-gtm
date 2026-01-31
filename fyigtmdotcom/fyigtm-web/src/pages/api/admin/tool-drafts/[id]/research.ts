@@ -180,6 +180,21 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       frontmatter.group = categoryToGroup[frontmatter.primaryCategory as Category];
     }
 
+    // Validate and filter categories array to only include valid categories
+    if (frontmatter.categories && Array.isArray(frontmatter.categories)) {
+      frontmatter.categories = frontmatter.categories.filter((cat: string) => categories.includes(cat as Category));
+      // Ensure primaryCategory is first
+      if (frontmatter.primaryCategory && !frontmatter.categories.includes(frontmatter.primaryCategory)) {
+        frontmatter.categories.unshift(frontmatter.primaryCategory);
+      } else if (frontmatter.primaryCategory && frontmatter.categories.includes(frontmatter.primaryCategory)) {
+        // Move primary to first position if not already
+        frontmatter.categories = [
+          frontmatter.primaryCategory,
+          ...frontmatter.categories.filter((c: string) => c !== frontmatter.primaryCategory)
+        ];
+      }
+    }
+
     // Ensure tag arrays are valid
     frontmatter.aiAutomation = (frontmatter.aiAutomation || []).filter((t: string) => aiAutomationTags.includes(t as any));
     frontmatter.pricingTags = (frontmatter.pricingTags || []).filter((t: string) => pricingTags.includes(t as any));
@@ -495,8 +510,11 @@ OUTPUT FORMAT - Start your response EXACTLY like this (no preamble):
 \`\`\`
 
 CRITICAL RULES FOR JSON:
-1. primaryCategory MUST be one of the exact category slugs listed above (e.g., "crm", "sales-engagement")
+1. primaryCategory MUST be one of the exact category slugs listed above - pick the BEST FIT category that represents the tool's core function
 2. categories array MUST include primaryCategory as the first element, plus any other applicable categories
+   - Tools often span multiple functions (e.g., Gong is both "sales-engagement" AND "revenue-analytics-attribution")
+   - Include 2-4 categories total that accurately represent where the tool provides value
+   - Categories CAN be from different groups (Sales, Marketing, RevOps, etc.)
 3. All tag arrays should only include values from the VALID tags listed above
 4. integrations should be lowercase, hyphenated names of tools/platforms this tool integrates with
 

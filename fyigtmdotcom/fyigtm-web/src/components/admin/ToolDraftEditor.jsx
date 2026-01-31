@@ -669,36 +669,53 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
               )}
             </div>
 
-            <div className="form-group">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Additional Categories</label>
               <p className="form-hint" style={{ margin: '0 0 8px', fontSize: '11px', color: '#6b7280' }}>
-                Optional: select additional categories within the same group
+                Optional: select additional categories from any group. Tools will appear in all selected category pages.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: 'var(--color-background)' }}>
-                {frontmatter.group ? (
-                  CATEGORIES.filter(c => c.group === frontmatter.group).map(cat => (
-                    <label key={cat.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={(frontmatter.categories || []).includes(cat.value)}
-                        disabled={cat.value === frontmatter.primaryCategory}
-                        onChange={(e) => {
-                          const current = frontmatter.categories || [];
-                          const updated = e.target.checked
-                            ? [...current, cat.value]
-                            : current.filter(v => v !== cat.value);
-                          handleFrontmatterChange('categories', updated);
-                        }}
-                      />
-                      <span style={{ fontSize: '13px', color: cat.value === frontmatter.primaryCategory ? '#6b7280' : 'inherit' }}>
-                        {cat.label}
-                        {cat.value === frontmatter.primaryCategory && ' (primary)'}
-                      </span>
-                    </label>
-                  ))
-                ) : (
-                  <span style={{ color: '#6b7280', fontSize: '13px' }}>Select a group to see available categories</span>
-                )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', padding: '16px', border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: 'var(--color-background)' }}>
+                {Object.entries(GROUPS).map(([groupKey, groupLabel]) => (
+                  <div key={groupKey} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: groupKey === frontmatter.group ? '#3b82f6' : '#6b7280',
+                      borderBottom: '1px solid var(--color-border)',
+                      paddingBottom: '6px',
+                      marginBottom: '4px'
+                    }}>
+                      {groupLabel}
+                      {groupKey === frontmatter.group && ' (primary group)'}
+                    </div>
+                    {CATEGORIES.filter(c => c.group === groupKey).map(cat => (
+                      <label key={cat.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={(frontmatter.categories || []).includes(cat.value)}
+                          disabled={cat.value === frontmatter.primaryCategory}
+                          onChange={(e) => {
+                            const current = frontmatter.categories || [];
+                            const updated = e.target.checked
+                              ? [...current, cat.value]
+                              : current.filter(v => v !== cat.value);
+                            handleFrontmatterChange('categories', updated);
+                          }}
+                        />
+                        <span style={{
+                          fontSize: '13px',
+                          color: cat.value === frontmatter.primaryCategory ? '#3b82f6' : 'inherit',
+                          fontWeight: cat.value === frontmatter.primaryCategory ? '500' : 'normal'
+                        }}>
+                          {cat.label}
+                          {cat.value === frontmatter.primaryCategory && ' ★'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
 
