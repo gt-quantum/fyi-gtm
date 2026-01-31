@@ -1,15 +1,61 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function ToolConfigEditor({ token }) {
   const [config, setConfig] = useState(null);
+  const [originalConfig, setOriginalConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Check if config has been modified from original
+  const hasUnsavedChanges = useCallback(() => {
+    if (!config || !originalConfig) return false;
+
+    // Compare relevant fields (excluding raw JSON editing fields)
+    const fieldsToCompare = [
+      'review_template',
+      'sections',
+      'default_sources',
+      'tone',
+      'emphasize',
+      'avoid',
+      'word_count_target',
+    ];
+
+    for (const field of fieldsToCompare) {
+      const current = config[field];
+      const original = originalConfig[field];
+
+      // Handle arrays/objects by comparing JSON strings
+      if (typeof current === 'object' || typeof original === 'object') {
+        if (JSON.stringify(current) !== JSON.stringify(original)) {
+          return true;
+        }
+      } else if (current !== original) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [config, originalConfig]);
+
   useEffect(() => {
     fetchConfig();
   }, []);
+
+  // Warn user before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const fetchConfig = async () => {
     try {
@@ -19,6 +65,7 @@ export default function ToolConfigEditor({ token }) {
       if (!response.ok) throw new Error('Failed to fetch tool config');
       const data = await response.json();
       setConfig(data);
+      setOriginalConfig(JSON.parse(JSON.stringify(data))); // Deep clone for comparison
     } catch (err) {
       setError(err.message);
     } finally {
@@ -62,6 +109,7 @@ export default function ToolConfigEditor({ token }) {
 
       const data = await response.json();
       setConfig(data);
+      setOriginalConfig(JSON.parse(JSON.stringify(data))); // Update original after successful save
       setSuccess('Tool configuration saved successfully');
     } catch (err) {
       setError(err.message);
@@ -176,8 +224,17 @@ export default function ToolConfigEditor({ token }) {
         </div>
 
         <div className="config-actions">
-          <button type="submit" className="save-button" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Configuration'}
+          {hasUnsavedChanges() && (
+            <span className="unsaved-indicator">
+              You have unsaved changes
+            </span>
+          )}
+          <button
+            type="submit"
+            className={`save-button ${hasUnsavedChanges() ? 'save-button--unsaved' : ''}`}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : hasUnsavedChanges() ? 'Save Changes' : 'Save Configuration'}
           </button>
         </div>
       </form>

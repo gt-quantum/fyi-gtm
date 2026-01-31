@@ -113,8 +113,9 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     // ========== STEP 2: AI RESEARCH REVIEW (HAIKU) ==========
     logs.push('Step 2: AI research review with Haiku...');
 
-    const researchNotes = await runHaikuResearch(anthropic, toolUrl, toolName || scrapedData.name, scrapedData);
-    logs.push('Haiku research complete');
+    const defaultSources = config?.default_sources || ['g2', 'trustpilot', 'capterra', 'reddit', 'producthunt'];
+    const researchNotes = await runHaikuResearch(anthropic, toolUrl, toolName || scrapedData.name, scrapedData, defaultSources);
+    logs.push(`Haiku research complete (sources: ${defaultSources.join(', ')})`);
 
     // ========== STEP 3: FINAL WRITING (SONNET) ==========
     logs.push('Step 3: Writing review with Sonnet...');
@@ -318,12 +319,35 @@ async function fetchLogoUrl(toolUrl: string): Promise<string | null> {
 
 // ========== STEP 2: HAIKU RESEARCH ==========
 
+function formatSourcesForPrompt(sources: string[]): string {
+  // Map source keys to human-readable search instructions
+  const sourceMap: Record<string, string> = {
+    'g2': 'G2 reviews and ratings',
+    'trustpilot': 'Trustpilot reviews',
+    'capterra': 'Capterra reviews',
+    'reddit': 'Reddit discussions and opinions',
+    'producthunt': 'Product Hunt launch and comments',
+    'twitter': 'Twitter/X mentions and feedback',
+    'linkedin': 'LinkedIn posts and discussions',
+    'youtube': 'YouTube reviews and tutorials',
+    'hackernews': 'Hacker News discussions',
+  };
+
+  return sources
+    .map(s => sourceMap[s.toLowerCase()] || `${s} reviews/mentions`)
+    .map(s => `   - ${s}`)
+    .join('\n');
+}
+
 async function runHaikuResearch(
   anthropic: Anthropic,
   toolUrl: string,
   toolName: string,
-  scrapedData: Record<string, any>
+  scrapedData: Record<string, any>,
+  defaultSources: string[]
 ): Promise<string> {
+  const sourcesInstructions = formatSourcesForPrompt(defaultSources);
+
   const prompt = `You are a research assistant. I need you to gather information about a software tool.
 
 TOOL: ${toolName || 'Unknown'}
@@ -333,9 +357,8 @@ SCRAPED DATA FROM WEBSITE:
 ${JSON.stringify(scrapedData, null, 2)}
 
 YOUR TASK:
-1. Use web search to find:
-   - User reviews and ratings (G2, Capterra, Trustpilot)
-   - Reddit discussions about this tool
+1. Use web search to find information from these sources:
+${sourcesInstructions}
    - Current pricing information
    - Any recent news or updates
 
