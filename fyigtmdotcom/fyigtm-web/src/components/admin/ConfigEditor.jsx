@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 
-const DEFAULT_STRUCTURE = `## 1️⃣ Sales Tech Spotlight
+const DEFAULT_STRUCTURE = `## One: Sales Tech Spotlight
 Feature ONE sales technology.
 - If TECH TO SPOTLIGHT was provided above, use it and research current details about that tool.
 - If no tech was provided, search for a trending or noteworthy sales tool and feature it.
 Include: what it does, why it matters now, and a practical use case.
 
-## 2️⃣ Two Tips to Try This Week
+## Two: Tips to Try This Week
 Two actionable sales tips.
 - If TIPS TO INCLUDE were provided above, expand on those with practical context.
 - If no tips were provided, generate two relevant tips based on the newsletter context and current trends.
 Keep each tip specific and immediately actionable.
 
-## 3️⃣ Three Takeaways
+## Three: Takeaways
 Three quick insights, stats, or lessons relevant to the audience.
 - If a TOPIC TO COVER was provided above, tie at least one takeaway to that theme.
 - Research current data or trends to make these timely and credible.
