@@ -191,8 +191,8 @@ OUTPUT THE NEWSLETTER ONLY - no preamble, no explanation, start directly with th
 
 def clean_newsletter_content(content: str) -> str:
     """
-    Remove any preamble before the first section heading
-    and any AI commentary that might slip through.
+    Remove any preamble before the first section heading.
+    Matches the same safe approach used in tool-research.
     """
     import re
 
@@ -203,16 +203,5 @@ def clean_newsletter_content(content: str) -> str:
         # Only strip if there's actual preamble (not just whitespace)
         if before and not before.startswith('#'):
             content = content[heading_match.start(2):]
-
-    # Strip closing AI commentary patterns
-    # Look for common AI sign-off patterns after the newsletter content
-    closing_patterns = [
-        r'\n\n(?:I hope|Let me know|Feel free|If you|Happy to|Hope this)',
-        r'\n\n(?:Is there anything|Would you like|I can also)',
-    ]
-    for pattern in closing_patterns:
-        match = re.search(pattern, content, re.IGNORECASE)
-        if match:
-            content = content[:match.start()]
 
     return content.strip()
