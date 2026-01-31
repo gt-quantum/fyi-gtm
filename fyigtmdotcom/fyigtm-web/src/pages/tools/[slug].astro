@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ToolListItem from '../../components/tools/ToolListItem.jsx';
 import UpvoteButton from '../../components/tools/UpvoteButton.jsx';
+import { categoryLabels } from '../../lib/taxonomy';
 
 export async function getStaticPaths() {
   const toolsEntries = await getCollection('tools');
@@ -20,9 +21,9 @@ const { Content } = await entry.render();
 const toolsEntries = await getCollection('tools');
 const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
 
-// Get related tools (same category)
+// Get related tools (share at least one category)
 const relatedTools = toolsData
-  .filter(t => t.category === tool.category && t.slug !== tool.slug)
+  .filter(t => t.slug !== tool.slug && t.categories.some(c => tool.categories.includes(c)))
   .slice(0, 5);
 
 // Get featured tools for sidebar
@@ -32,13 +33,14 @@ const pricingLabels = {
   free: { label: 'Free', color: '#10B981' },
   freemium: { label: 'Freemium', color: '#3B82F6' },
   paid: { label: 'Paid', color: '#8B5CF6' },
+  enterprise: { label: 'Enterprise', color: '#6366F1' },
   trial: { label: 'Free Trial', color: '#F59E0B' },
 };
 
 const pricing = pricingLabels[tool.pricing] || pricingLabels.free;
 
 // Format date
-const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
+const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
   day: 'numeric',
   month: 'numeric',
   year: 'numeric'
@@ -129,11 +131,11 @@ const dateAdded = new Date(tool.dateAdded).toLocaleDateString('en-US', {
           <span class="pricing-tag" style={`background: ${pricing.color}20; color: ${pricing.color};`}>
             {pricing.label}
           </span>
-          <a href={`/categories/${tool.category.toLowerCase().replace(/\s+/g, '-')}`} class="category-tag">
-            {tool.category}
+          <a href={`/categories/${tool.primaryCategory}`} class="category-tag">
+            {categoryLabels[tool.primaryCategory]}
           </a>
-          {tool.tags.slice(0, 3).map(tag => (
-            <span class="category-tag">{tag}</span>
+          {tool.integrations.slice(0, 3).map(integration => (
+            <span class="category-tag">{integration}</span>
           ))}
         </div>
 

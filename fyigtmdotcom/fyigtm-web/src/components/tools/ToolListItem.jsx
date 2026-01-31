@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion';
 import UpvoteButton from './UpvoteButton';
+import { categoryLabels } from '../../lib/taxonomy';
 
 export default function ToolListItem({ tool, index = 0 }) {
   const pricingLabels = {
     free: { label: 'Free', color: '#10B981' },
     freemium: { label: 'Freemium', color: '#3B82F6' },
     paid: { label: 'Paid', color: '#8B5CF6' },
+    enterprise: { label: 'Enterprise', color: '#6366F1' },
     trial: { label: 'Trial', color: '#F59E0B' },
   };
 
@@ -64,11 +66,11 @@ export default function ToolListItem({ tool, index = 0 }) {
               <span className="pricing-tag" style={{ color: pricing.color }}>
                 {pricing.label}
               </span>
-              <a href={`/categories/${tool.category.toLowerCase().replace(/\s+/g, '-')}`} className="category-link" onClick={(e) => e.stopPropagation()}>
-                {tool.category}
+              <a href={`/categories/${tool.primaryCategory}`} className="category-link" onClick={(e) => e.stopPropagation()}>
+                {categoryLabels[tool.primaryCategory] || tool.primaryCategory}
               </a>
-              {tool.tags?.slice(0, 2).map((tag, i) => (
-                <span key={i} className="tag">{tag}</span>
+              {tool.integrations?.slice(0, 2).map((integration, i) => (
+                <span key={i} className="tag">{integration}</span>
               ))}
             </div>
           </div>

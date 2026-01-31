@@ -18,9 +18,9 @@ const { category } = Astro.props;
 const toolsEntries = await getCollection('tools');
 const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
 
-// Filter tools by category
+// Filter tools by category (check if category slug is in tool's categories array)
 const categoryTools = toolsData.filter(
-  tool => tool.category.toLowerCase() === category.name.toLowerCase()
+  tool => tool.categories.includes(category.slug)
 );
 ---
 

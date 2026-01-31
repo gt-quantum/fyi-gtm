@@ -71,6 +71,7 @@ export default function UpvoteButton({ slug, initialUpvotes = 0, variant = 'card
       border: '1px solid',
       borderColor: hasVoted ? 'var(--color-text)' : 'var(--color-border)',
       cursor: hasVoted ? 'default' : 'pointer',
+      color: hasVoted ? 'var(--color-background)' : 'var(--color-text)',
       transition: 'all 0.2s',
       minWidth: '54px',
       opacity: isLoading ? 0.7 : 1,
@@ -85,6 +86,7 @@ export default function UpvoteButton({ slug, initialUpvotes = 0, variant = 'card
       border: '1px solid',
       borderColor: hasVoted ? 'var(--color-text)' : 'var(--color-border)',
       cursor: hasVoted ? 'default' : 'pointer',
+      color: hasVoted ? 'var(--color-background)' : 'var(--color-text)',
       transition: 'all 0.2s',
       minWidth: '60px',
       opacity: isLoading ? 0.7 : 1,
@@ -138,6 +140,11 @@ export default function UpvoteButton({ slug, initialUpvotes = 0, variant = 'card
         .upvote-button:not(.voted):hover svg {
           color: var(--color-background) !important;
           stroke: var(--color-background) !important;
+        }
+        .upvote-button.voted svg {
+          color: var(--color-background) !important;
+          fill: var(--color-background) !important;
+          stroke: none !important;
         }
       `}</style>
     </button>
