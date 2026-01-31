@@ -174,11 +174,45 @@ OUTPUT THE NEWSLETTER ONLY - no preamble, no explanation, start directly with th
         raise ValueError("No text content in response")
 
     # Find the block that contains the actual newsletter (has section headings)
-    # This avoids grabbing tool-use commentary or closing remarks
+    newsletter = None
     for block in text_blocks:
-        # Look for markdown section headings that indicate newsletter content
         if "## " in block and len(block) > 200:
-            return block.strip()
+            newsletter = block
+            break
 
-    # Fallback: return the longest block (most likely the newsletter)
-    return max(text_blocks, key=len).strip()
+    # Fallback: use the longest block
+    if not newsletter:
+        newsletter = max(text_blocks, key=len)
+
+    # Clean the content: strip any preamble before first ## heading
+    # and any closing remarks after the sign-off
+    return clean_newsletter_content(newsletter)
+
+
+def clean_newsletter_content(content: str) -> str:
+    """
+    Remove any preamble before the first section heading
+    and any AI commentary that might slip through.
+    """
+    import re
+
+    # Strip preamble: everything before the first ## heading
+    heading_match = re.search(r'^(.*?)(## )', content, re.DOTALL)
+    if heading_match:
+        before = heading_match.group(1).strip()
+        # Only strip if there's actual preamble (not just whitespace)
+        if before and not before.startswith('#'):
+            content = content[heading_match.start(2):]
+
+    # Strip closing AI commentary patterns
+    # Look for common AI sign-off patterns after the newsletter content
+    closing_patterns = [
+        r'\n\n(?:I hope|Let me know|Feel free|If you|Happy to|Hope this)',
+        r'\n\n(?:Is there anything|Would you like|I can also)',
+    ]
+    for pattern in closing_patterns:
+        match = re.search(pattern, content, re.IGNORECASE)
+        if match:
+            content = content[:match.start()]
+
+    return content.strip()
