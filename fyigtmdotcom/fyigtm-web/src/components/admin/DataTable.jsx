@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function DataTable({
   columns,
@@ -9,9 +9,44 @@ export default function DataTable({
   onMarkUnused,
   loading,
   emptyMessage = 'No data available',
+  // Multi-select props
+  selectable = false,
+  selectedIds = [],
+  onSelectionChange,
+  selectableFilter, // Optional function to determine if a row is selectable
 }) {
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
+
+  // Get selectable rows based on filter function
+  const selectableRows = selectableFilter
+    ? data.filter(row => selectableFilter(row))
+    : data;
+  const selectableIds = selectableRows.map(row => row.id);
+
+  // Check if all selectable rows are selected
+  const allSelected = selectableIds.length > 0 && selectableIds.every(id => selectedIds.includes(id));
+  const someSelected = selectedIds.length > 0 && !allSelected;
+
+  const handleSelectAll = () => {
+    if (!onSelectionChange) return;
+    if (allSelected) {
+      // Deselect all
+      onSelectionChange([]);
+    } else {
+      // Select all selectable rows
+      onSelectionChange(selectableIds);
+    }
+  };
+
+  const handleSelectRow = (rowId) => {
+    if (!onSelectionChange) return;
+    if (selectedIds.includes(rowId)) {
+      onSelectionChange(selectedIds.filter(id => id !== rowId));
+    } else {
+      onSelectionChange([...selectedIds, rowId]);
+    }
+  };
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -46,6 +81,20 @@ export default function DataTable({
       <table className="data-table">
         <thead>
           <tr>
+            {selectable && (
+              <th style={{ width: '40px', textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected;
+                  }}
+                  onChange={handleSelectAll}
+                  title={allSelected ? 'Deselect all' : 'Select all'}
+                  style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                />
+              </th>
+            )}
             {columns.map((col) => (
               <th
                 key={col.key}
@@ -62,8 +111,25 @@ export default function DataTable({
           </tr>
         </thead>
         <tbody>
-          {sortedData.map((row) => (
-            <tr key={row.id}>
+          {sortedData.map((row) => {
+            const isSelectable = !selectableFilter || selectableFilter(row);
+            const isSelected = selectedIds.includes(row.id);
+            return (
+            <tr key={row.id} style={isSelected ? { backgroundColor: 'rgba(59, 130, 246, 0.1)' } : {}}>
+              {selectable && (
+                <td style={{ textAlign: 'center' }}>
+                  {isSelectable ? (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectRow(row.id)}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                  ) : (
+                    <span style={{ color: '#9ca3af' }}>-</span>
+                  )}
+                </td>
+              )}
               {columns.map((col) => (
                 <td key={col.key}>
                   {col.render ? col.render(row[col.key], row) : formatValue(row[col.key], col.type)}
@@ -98,7 +164,8 @@ export default function DataTable({
                 )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
