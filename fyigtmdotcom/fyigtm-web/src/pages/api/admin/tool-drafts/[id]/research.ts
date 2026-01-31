@@ -2,6 +2,15 @@ import type { APIRoute } from 'astro';
 import { getSupabaseAdmin } from '../../../../../lib/supabase';
 import { validateToken } from '../../auth';
 import Anthropic from '@anthropic-ai/sdk';
+import {
+  categories,
+  categoryLabels,
+  categoryToGroup,
+  aiAutomationTags,
+  pricingTags,
+  companySizeTags,
+  type Category,
+} from '../../../../../lib/taxonomy';
 
 export const prerender = false;
 
@@ -144,14 +153,38 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     const detectedName = frontmatter.name || toolName || scrapedData.name || extractNameFromUrl(toolUrl);
     const slug = frontmatter.slug || generateSlug(detectedName);
 
-    // Merge frontmatter
+    // Merge frontmatter with new schema
     frontmatter.name = detectedName;
     frontmatter.slug = slug;
     frontmatter.url = frontmatter.url || toolUrl;
     frontmatter.logo = logoUrl || frontmatter.logo || '';
     frontmatter.featured = frontmatter.featured || false;
     frontmatter.isNew = frontmatter.isNew !== false;
-    frontmatter.dateAdded = frontmatter.dateAdded || new Date().toISOString().split('T')[0];
+    frontmatter.publishedAt = frontmatter.publishedAt || new Date().toISOString().split('T')[0];
+
+    // Ensure categories array includes primaryCategory
+    if (frontmatter.primaryCategory && (!frontmatter.categories || !frontmatter.categories.includes(frontmatter.primaryCategory))) {
+      frontmatter.categories = [frontmatter.primaryCategory, ...(frontmatter.categories || [])];
+    }
+
+    // Validate primaryCategory is in our taxonomy
+    if (frontmatter.primaryCategory && !categories.includes(frontmatter.primaryCategory)) {
+      // Try to find a close match or default to a sensible category
+      console.warn(`Invalid primaryCategory "${frontmatter.primaryCategory}", defaulting`);
+      frontmatter.primaryCategory = 'workflow-integration';
+      frontmatter.categories = ['workflow-integration'];
+    }
+
+    // Auto-derive group from primaryCategory
+    if (frontmatter.primaryCategory && categories.includes(frontmatter.primaryCategory)) {
+      frontmatter.group = categoryToGroup[frontmatter.primaryCategory as Category];
+    }
+
+    // Ensure tag arrays are valid
+    frontmatter.aiAutomation = (frontmatter.aiAutomation || []).filter((t: string) => aiAutomationTags.includes(t as any));
+    frontmatter.pricingTags = (frontmatter.pricingTags || []).filter((t: string) => pricingTags.includes(t as any));
+    frontmatter.companySize = (frontmatter.companySize || []).filter((t: string) => companySizeTags.includes(t as any));
+    frontmatter.integrations = frontmatter.integrations || [];
 
     logs.push(`Generated content for: ${detectedName}`);
 
@@ -391,6 +424,7 @@ Be factual and concise. This research will be used to write a review.`;
 
 // ========== STEP 3: SONNET WRITING ==========
 
+
 async function runSonnetWriting(
   anthropic: Anthropic,
   toolUrl: string,
@@ -403,6 +437,9 @@ async function runSonnetWriting(
   avoid: string,
   wordCount: number
 ): Promise<{ content: string; frontmatter: Record<string, any> }> {
+  // Build the list of valid categories grouped by their parent
+  const categoryList = categories.map(c => `"${c}" (${categoryLabels[c]})`).join(', ');
+
   const prompt = `You are a professional tech product reviewer. Write a comprehensive review based on the research provided.
 
 TOOL: ${toolName}
@@ -429,18 +466,39 @@ You MUST write at least ${wordCount} words. This is a hard minimum, not a sugges
 TEMPLATE TO FOLLOW:
 ${template}
 
+=== TAXONOMY REFERENCE (YOU MUST USE THESE EXACT VALUES) ===
+
+VALID CATEGORIES (use exact slugs):
+${categoryList}
+
+VALID aiAutomation tags: ${aiAutomationTags.map(t => `"${t}"`).join(', ')}
+VALID pricingTags: ${pricingTags.map(t => `"${t}"`).join(', ')}
+VALID companySize tags: ${companySizeTags.map(t => `"${t}"`).join(', ')}
+
+=== END TAXONOMY REFERENCE ===
+
 OUTPUT FORMAT - Start your response EXACTLY like this (no preamble):
 \`\`\`json
 {
   "name": "${toolName}",
   "slug": "${generateSlug(toolName)}",
   "description": "One-line SEO description under 160 chars",
-  "pricing": "free|freemium|paid|trial",
+  "primaryCategory": "MUST be one of the valid category slugs above",
+  "categories": ["primaryCategory", "optional-secondary-category"],
+  "pricing": "free|freemium|paid|enterprise",
   "priceNote": "Brief pricing summary",
-  "category": "Primary category",
-  "tags": ["tag1", "tag2", "tag3"]
+  "aiAutomation": ["ai-native or ai-enhanced or automation - pick applicable ones"],
+  "pricingTags": ["free-tier|freemium|paid-only|enterprise-pricing - pick applicable ones"],
+  "companySize": ["smb|mid-market|enterprise - pick applicable ones"],
+  "integrations": ["salesforce", "hubspot", "etc - list major integrations found"]
 }
 \`\`\`
+
+CRITICAL RULES FOR JSON:
+1. primaryCategory MUST be one of the exact category slugs listed above (e.g., "crm", "sales-engagement")
+2. categories array MUST include primaryCategory as the first element, plus any other applicable categories
+3. All tag arrays should only include values from the VALID tags listed above
+4. integrations should be lowercase, hyphenated names of tools/platforms this tool integrates with
 
 ## What is ${toolName}?
 [Your review starts here, following the template structure]

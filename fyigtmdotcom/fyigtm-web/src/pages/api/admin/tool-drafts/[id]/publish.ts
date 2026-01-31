@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getSupabaseAdmin } from '../../../../../lib/supabase';
 import { validateToken } from '../../auth';
+import { categories, type Category } from '../../../../../lib/taxonomy';
 
 export const prerender = false;
 
@@ -54,31 +55,62 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       });
     }
 
-    // Ensure all required frontmatter fields have values
+    // Validate and normalize primaryCategory
+    let primaryCategory: Category = draft.frontmatter.primaryCategory;
+    if (!primaryCategory || !categories.includes(primaryCategory)) {
+      // Fallback to first valid category or default
+      const validCats = (draft.frontmatter.categories || []).filter((c: string) => categories.includes(c as Category));
+      primaryCategory = validCats[0] || 'workflow-integration';
+    }
+
+    // Ensure categories array includes primaryCategory and only valid values
+    let categoriesArray: Category[] = (draft.frontmatter.categories || [])
+      .filter((c: string) => categories.includes(c as Category)) as Category[];
+    if (!categoriesArray.includes(primaryCategory)) {
+      categoriesArray = [primaryCategory, ...categoriesArray];
+    }
+    if (categoriesArray.length === 0) {
+      categoriesArray = [primaryCategory];
+    }
+
+    // Ensure all required frontmatter fields have values (new schema)
     const completeFrontmatter = {
-      // Required fields with defaults
+      // Required fields
       name: draft.frontmatter.name || draft.name || 'Unnamed Tool',
       description: draft.frontmatter.description || '',
       url: draft.frontmatter.url || draft.url,
+
+      // Categorization (new schema)
+      primaryCategory: primaryCategory,
+      categories: categoriesArray,
+
+      // Structured tags (new schema)
+      aiAutomation: draft.frontmatter.aiAutomation || [],
+      pricingTags: draft.frontmatter.pricingTags || [],
+      companySize: draft.frontmatter.companySize || [],
+      integrations: draft.frontmatter.integrations || [],
+
+      // Pricing display
       pricing: draft.frontmatter.pricing || 'freemium',
-      category: draft.frontmatter.category || 'Uncategorized',
-      tags: draft.frontmatter.tags || [],
+      ...(draft.frontmatter.priceNote && { priceNote: draft.frontmatter.priceNote }),
+
+      // Meta
+      featured: draft.frontmatter.featured ?? false,
+      publishedAt: draft.frontmatter.publishedAt || new Date().toISOString().split('T')[0],
+      ...(draft.status === 'published' && { updatedAt: new Date().toISOString().split('T')[0] }),
+
+      // Operational
       upvotes: draft.frontmatter.upvotes ?? 0,
       comments: draft.frontmatter.comments ?? 0,
       views: draft.frontmatter.views ?? 0,
-      featured: draft.frontmatter.featured ?? false,
       isNew: draft.frontmatter.isNew ?? true,
+      isVerified: draft.frontmatter.isVerified ?? false,
       hasDeal: draft.frontmatter.hasDeal ?? false,
       isDiscontinued: draft.frontmatter.isDiscontinued ?? false,
-      dateAdded: draft.frontmatter.dateAdded || new Date().toISOString().split('T')[0],
+
       // Optional fields (only include if present)
       ...(draft.frontmatter.logo && { logo: draft.frontmatter.logo }),
-      ...(draft.frontmatter.priceNote && { priceNote: draft.frontmatter.priceNote }),
-      ...(draft.frontmatter.subcategory && { subcategory: draft.frontmatter.subcategory }),
-      ...(draft.frontmatter.isVerified !== undefined && { isVerified: draft.frontmatter.isVerified }),
       ...(draft.frontmatter.dealDescription && { dealDescription: draft.frontmatter.dealDescription }),
-      // Add dateUpdated on republish
-      ...(draft.status === 'published' && { dateUpdated: new Date().toISOString().split('T')[0] }),
     };
 
     // Build the markdown file content

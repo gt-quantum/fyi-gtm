@@ -1,10 +1,76 @@
 import { useState, useEffect, useRef } from 'react';
 
+// Taxonomy - must match src/lib/taxonomy.ts
+const CATEGORIES = [
+  // Data & Intelligence
+  { value: 'contact-company-data', label: 'Contact & Company Data', group: 'data-intelligence' },
+  { value: 'data-enrichment-hygiene', label: 'Data Enrichment & Hygiene', group: 'data-intelligence' },
+  { value: 'intent-signals', label: 'Intent Signals', group: 'data-intelligence' },
+  { value: 'market-competitive-research', label: 'Market & Competitive Research', group: 'data-intelligence' },
+  { value: 'ai-data-agents', label: 'AI Data Agents', group: 'data-intelligence' },
+  // Marketing
+  { value: 'marketing-automation-email', label: 'Marketing Automation & Email', group: 'marketing' },
+  { value: 'abm-demand-gen', label: 'ABM & Demand Gen', group: 'marketing' },
+  { value: 'content-creative', label: 'Content & Creative', group: 'marketing' },
+  { value: 'social-community', label: 'Social & Community', group: 'marketing' },
+  { value: 'seo-organic', label: 'SEO & Organic', group: 'marketing' },
+  { value: 'ai-marketing-tools', label: 'AI Marketing Tools', group: 'marketing' },
+  // Sales
+  { value: 'crm', label: 'CRM', group: 'sales' },
+  { value: 'sales-engagement', label: 'Sales Engagement', group: 'sales' },
+  { value: 'sales-enablement', label: 'Sales Enablement', group: 'sales' },
+  { value: 'cpq-proposals', label: 'CPQ & Proposals', group: 'sales' },
+  { value: 'ai-sales-assistants', label: 'AI Sales Assistants', group: 'sales' },
+  // Revenue Operations
+  { value: 'lead-management', label: 'Lead Management', group: 'revenue-operations' },
+  { value: 'pipeline-forecasting', label: 'Pipeline & Forecasting', group: 'revenue-operations' },
+  { value: 'revenue-analytics-attribution', label: 'Revenue Analytics & Attribution', group: 'revenue-operations' },
+  { value: 'workflow-integration', label: 'Workflow & Integration', group: 'revenue-operations' },
+  { value: 'ai-revops-tools', label: 'AI RevOps Tools', group: 'revenue-operations' },
+  // Customer
+  { value: 'customer-success', label: 'Customer Success', group: 'customer' },
+  { value: 'product-analytics-adoption', label: 'Product Analytics & Adoption', group: 'customer' },
+  { value: 'support-feedback', label: 'Support & Feedback', group: 'customer' },
+  { value: 'ai-customer-tools', label: 'AI Customer Tools', group: 'customer' },
+  // Partnerships
+  { value: 'partner-management', label: 'Partner Management', group: 'partnerships' },
+  { value: 'affiliates-referrals', label: 'Affiliates & Referrals', group: 'partnerships' },
+  { value: 'ai-partnership-tools', label: 'AI Partnership Tools', group: 'partnerships' },
+];
+
+const GROUPS = {
+  'data-intelligence': 'Data & Intelligence',
+  'marketing': 'Marketing',
+  'sales': 'Sales',
+  'revenue-operations': 'Revenue Operations',
+  'customer': 'Customer',
+  'partnerships': 'Partnerships',
+};
+
+const AI_AUTOMATION_TAGS = [
+  { value: 'ai-native', label: 'AI Native' },
+  { value: 'ai-enhanced', label: 'AI Enhanced' },
+  { value: 'automation', label: 'Automation' },
+];
+
+const PRICING_TAGS = [
+  { value: 'free-tier', label: 'Free Tier' },
+  { value: 'freemium', label: 'Freemium' },
+  { value: 'paid-only', label: 'Paid Only' },
+  { value: 'enterprise-pricing', label: 'Enterprise Pricing' },
+];
+
+const COMPANY_SIZE_TAGS = [
+  { value: 'smb', label: 'SMB' },
+  { value: 'mid-market', label: 'Mid-Market' },
+  { value: 'enterprise', label: 'Enterprise' },
+];
+
 const PRICING_OPTIONS = [
   { value: 'free', label: 'Free' },
   { value: 'freemium', label: 'Freemium' },
   { value: 'paid', label: 'Paid' },
-  { value: 'trial', label: 'Trial' },
+  { value: 'enterprise', label: 'Enterprise' },
 ];
 
 const STATUS_CONFIG = {
@@ -35,7 +101,7 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
   const hasContent = draft.generated_content && draft.generated_content.trim().length > 0;
   const hasResearchData = draft.research_data && Object.keys(draft.research_data).length > 0;
 
-  // Initialize frontmatter if not present
+  // Initialize frontmatter if not present (new schema)
   useEffect(() => {
     if (!draft.frontmatter) {
       setDraft((prev) => ({
@@ -46,15 +112,36 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
           description: '',
           url: prev.url || '',
           logo: '',
+          // Categorization (new schema)
+          group: '',
+          primaryCategory: '',
+          categories: [],
+          // Structured tags (new schema)
+          aiAutomation: [],
+          pricingTags: [],
+          companySize: [],
+          integrations: [],
+          // Pricing display
           pricing: 'freemium',
           priceNote: '',
-          category: '',
-          tags: [],
+          // Meta
           featured: false,
           isNew: true,
-          dateAdded: new Date().toISOString().split('T')[0],
+          publishedAt: new Date().toISOString().split('T')[0],
         },
       }));
+    } else if (draft.frontmatter && !draft.frontmatter.group && draft.frontmatter.primaryCategory) {
+      // Auto-detect group from existing primary category
+      const categoryObj = CATEGORIES.find(c => c.value === draft.frontmatter.primaryCategory);
+      if (categoryObj) {
+        setDraft((prev) => ({
+          ...prev,
+          frontmatter: {
+            ...prev.frontmatter,
+            group: categoryObj.group,
+          },
+        }));
+      }
     }
   }, []);
 
@@ -519,33 +606,186 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
             </div>
 
             <div className="form-group">
-              <label className="form-label">Category</label>
-              <input
-                type="text"
-                className="form-input"
-                value={frontmatter.category || ''}
-                onChange={(e) => handleFrontmatterChange('category', e.target.value)}
-                placeholder="e.g., Productivity"
-              />
+              <label className="form-label">Group *</label>
+              <select
+                className="form-select"
+                value={frontmatter.group || ''}
+                onChange={(e) => {
+                  const newGroup = e.target.value;
+                  handleFrontmatterChange('group', newGroup);
+                  // Clear primary category if it doesn't belong to new group
+                  const currentPrimary = frontmatter.primaryCategory;
+                  if (currentPrimary) {
+                    const categoryObj = CATEGORIES.find(c => c.value === currentPrimary);
+                    if (categoryObj && categoryObj.group !== newGroup) {
+                      handleFrontmatterChange('primaryCategory', '');
+                      // Also filter out categories not in this group
+                      const validCats = (frontmatter.categories || []).filter(catVal => {
+                        const cat = CATEGORIES.find(c => c.value === catVal);
+                        return cat && cat.group === newGroup;
+                      });
+                      handleFrontmatterChange('categories', validCats);
+                    }
+                  }
+                }}
+              >
+                <option value="">Select group</option>
+                {Object.entries(GROUPS).map(([groupKey, groupLabel]) => (
+                  <option key={groupKey} value={groupKey}>{groupLabel}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Primary Category *</label>
+              <select
+                className="form-select"
+                value={frontmatter.primaryCategory || ''}
+                onChange={(e) => {
+                  const newPrimary = e.target.value;
+                  handleFrontmatterChange('primaryCategory', newPrimary);
+                  // Auto-set group based on category
+                  if (newPrimary) {
+                    const categoryObj = CATEGORIES.find(c => c.value === newPrimary);
+                    if (categoryObj && categoryObj.group !== frontmatter.group) {
+                      handleFrontmatterChange('group', categoryObj.group);
+                    }
+                  }
+                  // Ensure primary is in categories array
+                  const currentCats = frontmatter.categories || [];
+                  if (newPrimary && !currentCats.includes(newPrimary)) {
+                    handleFrontmatterChange('categories', [newPrimary, ...currentCats]);
+                  }
+                }}
+                disabled={!frontmatter.group}
+              >
+                <option value="">{frontmatter.group ? 'Select primary category' : 'Select a group first'}</option>
+                {frontmatter.group && CATEGORIES.filter(c => c.group === frontmatter.group).map(cat => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+              {!frontmatter.group && (
+                <small style={{ color: '#f59e0b', fontSize: '11px' }}>Please select a group first</small>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Additional Categories</label>
+              <p className="form-hint" style={{ margin: '0 0 8px', fontSize: '11px', color: '#6b7280' }}>
+                Optional: select additional categories within the same group
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: 'var(--color-background)' }}>
+                {frontmatter.group ? (
+                  CATEGORIES.filter(c => c.group === frontmatter.group).map(cat => (
+                    <label key={cat.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={(frontmatter.categories || []).includes(cat.value)}
+                        disabled={cat.value === frontmatter.primaryCategory}
+                        onChange={(e) => {
+                          const current = frontmatter.categories || [];
+                          const updated = e.target.checked
+                            ? [...current, cat.value]
+                            : current.filter(v => v !== cat.value);
+                          handleFrontmatterChange('categories', updated);
+                        }}
+                      />
+                      <span style={{ fontSize: '13px', color: cat.value === frontmatter.primaryCategory ? '#6b7280' : 'inherit' }}>
+                        {cat.label}
+                        {cat.value === frontmatter.primaryCategory && ' (primary)'}
+                      </span>
+                    </label>
+                  ))
+                ) : (
+                  <span style={{ color: '#6b7280', fontSize: '13px' }}>Select a group to see available categories</span>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">AI/Automation Tags</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {AI_AUTOMATION_TAGS.map(tag => (
+                  <label key={tag.value} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={(frontmatter.aiAutomation || []).includes(tag.value)}
+                      onChange={(e) => {
+                        const current = frontmatter.aiAutomation || [];
+                        const updated = e.target.checked
+                          ? [...current, tag.value]
+                          : current.filter(t => t !== tag.value);
+                        handleFrontmatterChange('aiAutomation', updated);
+                      }}
+                    />
+                    <span style={{ fontSize: '13px' }}>{tag.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Company Size Tags</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {COMPANY_SIZE_TAGS.map(tag => (
+                  <label key={tag.value} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={(frontmatter.companySize || []).includes(tag.value)}
+                      onChange={(e) => {
+                        const current = frontmatter.companySize || [];
+                        const updated = e.target.checked
+                          ? [...current, tag.value]
+                          : current.filter(t => t !== tag.value);
+                        handleFrontmatterChange('companySize', updated);
+                      }}
+                    />
+                    <span style={{ fontSize: '13px' }}>{tag.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Pricing Tags</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {PRICING_TAGS.map(tag => (
+                  <label key={tag.value} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={(frontmatter.pricingTags || []).includes(tag.value)}
+                      onChange={(e) => {
+                        const current = frontmatter.pricingTags || [];
+                        const updated = e.target.checked
+                          ? [...current, tag.value]
+                          : current.filter(t => t !== tag.value);
+                        handleFrontmatterChange('pricingTags', updated);
+                      }}
+                    />
+                    <span style={{ fontSize: '13px' }}>{tag.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Tags (comma-separated)</label>
+              <label className="form-label">Integrations (comma-separated)</label>
               <input
                 type="text"
                 className="form-input"
-                value={Array.isArray(frontmatter.tags) ? frontmatter.tags.join(', ') : ''}
+                value={Array.isArray(frontmatter.integrations) ? frontmatter.integrations.join(', ') : ''}
                 onChange={(e) =>
                   handleFrontmatterChange(
-                    'tags',
+                    'integrations',
                     e.target.value
                       .split(',')
-                      .map((t) => t.trim())
+                      .map((t) => t.trim().toLowerCase().replace(/\s+/g, '-'))
                       .filter((t) => t)
                   )
                 }
-                placeholder="tag1, tag2, tag3"
+                placeholder="salesforce, hubspot, slack, zoom"
               />
+              <small style={{ color: '#6b7280', fontSize: '11px' }}>Platform/tool names this tool integrates with</small>
             </div>
 
             <div className="form-group">
@@ -571,12 +811,12 @@ export default function ToolDraftEditor({ token, draft: initialDraft, onBack, on
             </div>
 
             <div className="form-group">
-              <label className="form-label">Date Added</label>
+              <label className="form-label">Published At</label>
               <input
                 type="date"
                 className="form-input"
-                value={frontmatter.dateAdded || ''}
-                onChange={(e) => handleFrontmatterChange('dateAdded', e.target.value)}
+                value={frontmatter.publishedAt || ''}
+                onChange={(e) => handleFrontmatterChange('publishedAt', e.target.value)}
               />
             </div>
           </div>

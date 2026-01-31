@@ -62,18 +62,46 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <label for="tool-category" class="form-label">Category *</label>
               <select id="tool-category" name="category" required class="form-select">
                 <option value="">Select a category</option>
-                <option value="sales-engagement">Sales Engagement</option>
-                <option value="marketing-automation">Marketing Automation</option>
-                <option value="crm">CRM</option>
-                <option value="analytics">Analytics</option>
-                <option value="content">Content</option>
-                <option value="email">Email</option>
-                <option value="social">Social Media</option>
-                <option value="seo">SEO</option>
-                <option value="advertising">Advertising</option>
-                <option value="data">Data & Enrichment</option>
-                <option value="productivity">Productivity</option>
-                <option value="other">Other</option>
+                <optgroup label="Data & Intelligence">
+                  <option value="contact-company-data">Contact & Company Data</option>
+                  <option value="data-enrichment-hygiene">Data Enrichment & Hygiene</option>
+                  <option value="intent-signals">Intent Signals</option>
+                  <option value="market-competitive-research">Market & Competitive Research</option>
+                  <option value="ai-data-agents">AI Data Agents</option>
+                </optgroup>
+                <optgroup label="Marketing">
+                  <option value="marketing-automation-email">Marketing Automation & Email</option>
+                  <option value="abm-demand-gen">ABM & Demand Gen</option>
+                  <option value="content-creative">Content & Creative</option>
+                  <option value="social-community">Social & Community</option>
+                  <option value="seo-organic">SEO & Organic</option>
+                  <option value="ai-marketing-tools">AI Marketing Tools</option>
+                </optgroup>
+                <optgroup label="Sales">
+                  <option value="crm">CRM</option>
+                  <option value="sales-engagement">Sales Engagement</option>
+                  <option value="sales-enablement">Sales Enablement</option>
+                  <option value="cpq-proposals">CPQ & Proposals</option>
+                  <option value="ai-sales-assistants">AI Sales Assistants</option>
+                </optgroup>
+                <optgroup label="Revenue Operations">
+                  <option value="lead-management">Lead Management</option>
+                  <option value="pipeline-forecasting">Pipeline & Forecasting</option>
+                  <option value="revenue-analytics-attribution">Revenue Analytics & Attribution</option>
+                  <option value="workflow-integration">Workflow & Integration</option>
+                  <option value="ai-revops-tools">AI RevOps Tools</option>
+                </optgroup>
+                <optgroup label="Customer">
+                  <option value="customer-success">Customer Success</option>
+                  <option value="product-analytics-adoption">Product Analytics & Adoption</option>
+                  <option value="support-feedback">Support & Feedback</option>
+                  <option value="ai-customer-tools">AI Customer Tools</option>
+                </optgroup>
+                <optgroup label="Partnerships">
+                  <option value="partner-management">Partner Management</option>
+                  <option value="affiliates-referrals">Affiliates & Referrals</option>
+                  <option value="ai-partnership-tools">AI Partnership Tools</option>
+                </optgroup>
               </select>
             </div>
 
@@ -84,7 +112,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 <option value="free">Free</option>
                 <option value="freemium">Freemium</option>
                 <option value="paid">Paid</option>
-                <option value="trial">Free Trial</option>
+                <option value="enterprise">Enterprise</option>
               </select>
             </div>
           </div>
