@@ -1,28 +1,114 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import CategoryCard from '../../components/ui/CategoryCard.jsx';
+import {
+  groups,
+  categories as categoryList,
+  categoryToGroup,
+  groupLabels,
+  categoryLabels,
+  getCategoriesForGroup
+} from '../../lib/taxonomy';
 
+const toolsEntries = await getCollection('tools');
 const categoriesEntries = await getCollection('categories');
+
+// Build category data with tool counts
+const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
 const categoriesData = categoriesEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
 
-// Sort by order
-const categories = [...categoriesData].sort((a, b) => a.order - b.order);
+// Calculate tool counts per category
+const categoryCounts: Record<string, number> = {};
+categoryList.forEach(cat => {
+  categoryCounts[cat] = toolsData.filter(t =>
+    t.categories?.includes(cat) || t.primaryCategory === cat
+  ).length;
+});
+
+// Calculate tool counts per group
+const groupCounts: Record<string, number> = {};
+groups.forEach(group => {
+  const groupCats = getCategoriesForGroup(group);
+  groupCounts[group] = toolsData.filter(t =>
+    t.categories?.some(tc => groupCats.includes(tc)) || groupCats.includes(t.primaryCategory)
+  ).length;
+});
+
+// Group icons (you can customize these)
+const groupIcons: Record<string, string> = {
+  'data-intelligence': '📊',
+  'marketing': '📣',
+  'sales': '💼',
+  'revenue-operations': '⚙️',
+  'customer': '🤝',
+  'partnerships': '🤲',
+};
+
+// Group descriptions
+const groupDescriptions: Record<string, string> = {
+  'data-intelligence': 'Tools for finding contacts, enriching data, tracking intent signals, and market research.',
+  'marketing': 'Email, ABM, content creation, social media, SEO, and AI-powered marketing tools.',
+  'sales': 'CRM systems, sales engagement, enablement, proposals, and AI sales assistants.',
+  'revenue-operations': 'Lead management, pipeline forecasting, analytics, and workflow automation.',
+  'customer': 'Customer success, product analytics, support, and AI customer tools.',
+  'partnerships': 'Partner management, affiliate programs, and AI partnership tools.',
+};
 ---
 
-<BaseLayout title="GTM Tool Categories | FYI GTM">
+<BaseLayout title="Browse GTM Tools by Category | FYI GTM">
   <div class="container">
     <header class="page-header">
-      <h1 class="page-title">Categories</h1>
+      <h1 class="page-title">Browse by Business Function</h1>
       <p class="page-description">
-        Browse GTM tools by category. Find the right tools for your go-to-market strategy.
+        Explore {toolsData.length}+ go-to-market tools organized by team function and category.
       </p>
     </header>
 
-    <div class="categories-grid">
-      {categories.map((category, index) => (
-        <CategoryCard client:load category={category} index={index} />
+    <!-- Quick Jump Navigation -->
+    <nav class="group-jump-nav">
+      {groups.map((group) => (
+        <a href={`#${group}`} class="jump-link">
+          <span class="jump-icon">{groupIcons[group]}</span>
+          <span class="jump-label">{groupLabels[group]}</span>
+        </a>
       ))}
+    </nav>
+
+    <div class="groups-list">
+      {groups.map((group) => {
+        const groupCats = getCategoriesForGroup(group);
+        return (
+          <section class="group-section" id={group}>
+            <div class="group-header">
+              <div class="group-icon">{groupIcons[group]}</div>
+              <div class="group-info">
+                <h2 class="group-title">
+                  {groupLabels[group]}
+                  <span class="group-count">{groupCounts[group]} tools</span>
+                </h2>
+                <p class="group-description">{groupDescriptions[group]}</p>
+              </div>
+            </div>
+
+            <div class="categories-grid">
+              {groupCats.map((cat) => {
+                const catData = categoriesData.find(c => c.slug === cat);
+                return (
+                  <a href={`/categories/${cat}`} class="category-card">
+                    <div class="category-content">
+                      <h3 class="category-name">{categoryLabels[cat]}</h3>
+                      <span class="category-count">{categoryCounts[cat]} tools</span>
+                    </div>
+                    <svg class="category-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </div>
   </div>
 </BaseLayout>
@@ -35,13 +121,14 @@ const categories = [...categoriesData].sort((a, b) => a.order - b.order);
   }
 
   .page-header {
-    margin-bottom: 32px;
+    margin-bottom: 40px;
+    text-align: center;
   }
 
   .page-title {
     font-size: 2rem;
     font-weight: 600;
-    margin: 0 0 8px;
+    margin: 0 0 12px;
     color: var(--color-text);
   }
 
@@ -49,11 +136,211 @@ const categories = [...categoriesData].sort((a, b) => a.order - b.order);
     font-size: 1rem;
     color: var(--color-text-muted);
     margin: 0;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .group-jump-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 40px;
+    padding: 16px;
+    background: var(--color-background-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    position: sticky;
+    top: calc(var(--header-height) + 16px);
+    z-index: 10;
+  }
+
+  .jump-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .jump-link:hover {
+    border-color: var(--color-border-hover);
+    color: var(--color-text);
+    background: var(--color-background-tertiary);
+  }
+
+  .jump-icon {
+    font-size: 1rem;
+  }
+
+  .jump-label {
+    display: inline;
+  }
+
+  .groups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  .group-section {
+    scroll-margin-top: 100px;
+  }
+
+  .group-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .group-icon {
+    font-size: 2rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .group-info {
+    flex: 1;
+  }
+
+  .group-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .group-count {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    background: var(--color-background-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    color: var(--color-text-muted);
+  }
+
+  .group-description {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.5;
   }
 
   .categories-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .category-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .category-card:hover {
+    border-color: var(--color-border-hover);
+    background: var(--color-background-secondary);
+  }
+
+  .category-card:hover .category-arrow {
+    transform: translateX(4px);
+    opacity: 1;
+  }
+
+  .category-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .category-name {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  .category-count {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .category-arrow {
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 768px) {
+    .page-header {
+      text-align: left;
+    }
+
+    .page-description {
+      margin-left: 0;
+    }
+
+    .group-jump-nav {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      gap: 6px;
+      padding: 12px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .group-jump-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .jump-link {
+      flex-shrink: 0;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .jump-label {
+      display: none;
+    }
+
+    .jump-icon {
+      font-size: 1.25rem;
+    }
+
+    .group-header {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .group-title {
+      font-size: 1.25rem;
+    }
+
+    .categories-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

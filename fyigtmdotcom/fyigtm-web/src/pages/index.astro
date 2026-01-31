@@ -1,17 +1,12 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import SearchableToolsList from '../components/tools/SearchableToolsList.jsx';
+import FilterableToolsList from '../components/tools/FilterableToolsList.jsx';
 import Sidebar from '../components/tools/Sidebar.jsx';
-import CategoryTabs from '../components/tools/CategoryTabs.jsx';
 
 const toolsEntries = await getCollection('tools');
-const categoriesEntries = await getCollection('categories');
 
 const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
-const categoriesData = categoriesEntries.map(entry => ({ ...entry.data, slug: entry.slug })).sort((a, b) => a.order - b.order);
-
-const categories = categoriesData.slice(0, 10);
 ---
 
 <BaseLayout title="GTM Tools Directory | FYI GTM">
@@ -41,13 +36,10 @@ const categories = categoriesData.slice(0, 10);
       </div>
     </div>
 
-    <!-- Category Filter Tabs -->
-    <CategoryTabs client:load categories={categories} activeCategory="all" />
-
     <!-- Main Content -->
     <div class="main-layout">
-      <!-- Tools List with Sort Options -->
-      <SearchableToolsList client:load tools={toolsData} defaultSort="newest" />
+      <!-- Filterable Tools List with Group/Category Filter -->
+      <FilterableToolsList client:load tools={toolsData} defaultSort="newest" />
 
       <!-- Sidebar -->
       <div class="sidebar-wrapper">
