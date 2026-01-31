@@ -3,6 +3,10 @@ import anthropic
 
 from .config import ANTHROPIC_API_KEY, WRITING_MODEL, MAX_WRITING_TOKENS
 
+# Models for 2-step pipeline
+RESEARCH_MODEL = "claude-3-5-haiku-20241022"
+MAX_RESEARCH_TOKENS = 2000
+
 # Default newsletter structure used when none is configured in the database
 DEFAULT_STRUCTURE = """## One: Sales Tech Spotlight
 Feature ONE sales technology.
@@ -108,35 +112,93 @@ def generate_newsletter(
     tips: list = None,
 ) -> str:
     """
-    Generate a newsletter with optional backlog items.
-    Uses web search for freshness.
+    Generate a newsletter using a 2-step pipeline:
+    1. Haiku + web search → research notes
+    2. Sonnet (no tools) → final newsletter
+
+    This mirrors the proven tool-research approach for reliable output.
     """
     context_section = build_context_section(config)
     backlog_section = build_backlog_section(topic, tech, tips or [])
     structure_section = get_structure(config)
 
-    def make_request():
-        return client.messages.create(
-            model=WRITING_MODEL,
-            max_tokens=MAX_WRITING_TOKENS,
-            system="""You are a newsletter writer. Your output will be sent directly to subscribers.
+    # ========== STEP 1: RESEARCH WITH HAIKU ==========
+    print("  Step 1: Researching with Haiku...")
+    research_notes = run_research_step(client, context_section, backlog_section)
+    print("  Research complete.")
 
-CRITICAL: Output ONLY the newsletter content. Never include:
-- Explanations of what you're doing ("I'll search for...", "Let me find...")
-- Meta-commentary about the writing process
-- References to being an AI, Claude, or using tools
-- Preambles or conclusions about your research
+    # ========== STEP 2: WRITING WITH SONNET ==========
+    print("  Step 2: Writing with Sonnet...")
+    newsletter = run_writing_step(
+        client, context_section, backlog_section, structure_section, research_notes
+    )
+    print("  Writing complete.")
 
-Start your response with the first section heading. End with only the sign-off.""",
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"""{context_section}
+    return newsletter
+
+
+def run_research_step(
+    client,
+    context_section: str,
+    backlog_section: str,
+) -> str:
+    """
+    Step 1: Use Haiku with web search to gather current information.
+    Returns research notes to be used by the writing step.
+    """
+    prompt = f"""You are a research assistant gathering information for a weekly newsletter.
+
+{context_section}
 
 {backlog_section}
 
-Use web search to research current, relevant information, then write the newsletter.
+YOUR TASK:
+1. Use web search to find current, relevant information:
+   - If a TECH TO SPOTLIGHT was provided, search for recent news, updates, or reviews about it
+   - If no tech was provided, search for trending sales/GTM tools this week
+   - Search for current sales statistics, trends, or insights
+   - Look for timely, credible data points
+
+2. Output a structured research summary with:
+   - Tech tool information (name, what it does, why it's relevant now, pricing if found)
+   - 2-3 current statistics or trends relevant to sales/GTM
+   - Any notable news or developments in the space
+   - Specific facts, quotes, or data points to include
+
+Be factual and concise. This research will be used to write the newsletter."""
+
+    def make_request():
+        return client.messages.create(
+            model=RESEARCH_MODEL,
+            max_tokens=MAX_RESEARCH_TOKENS,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+    response = call_with_retry(make_request)
+
+    # Extract all text from response (research notes can include all commentary)
+    text_parts = [block.text for block in response.content if hasattr(block, "text")]
+    return "\n".join(text_parts)
+
+
+def run_writing_step(
+    client,
+    context_section: str,
+    backlog_section: str,
+    structure_section: str,
+    research_notes: str,
+) -> str:
+    """
+    Step 2: Use Sonnet (NO tools) to write the final newsletter.
+    No web search = no tool-use commentary = clean output.
+    """
+    prompt = f"""{context_section}
+
+{backlog_section}
+
+RESEARCH NOTES:
+{research_notes}
 
 NEWSLETTER STRUCTURE:
 
@@ -160,39 +222,33 @@ IMAGES:
 - Place images after the section heading, before the text
 - Skip images if none feel relevant
 
-OUTPUT THE NEWSLETTER ONLY - no preamble, no explanation, start directly with the first section:""",
-                }
-            ],
+Write the newsletter now. Start directly with the first section heading (## One:)."""
+
+    def make_request():
+        return client.messages.create(
+            model=WRITING_MODEL,
+            max_tokens=MAX_WRITING_TOKENS,
+            messages=[{"role": "user", "content": prompt}],
         )
 
     response = call_with_retry(make_request)
 
-    # Extract text blocks from response
-    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+    # Extract text - should be clean since no tools were used
+    text_parts = [block.text for block in response.content if hasattr(block, "text")]
 
-    if not text_blocks:
+    if not text_parts:
         raise ValueError("No text content in response")
 
-    # Find the block that contains the actual newsletter (has section headings)
-    newsletter = None
-    for block in text_blocks:
-        if "## " in block and len(block) > 200:
-            newsletter = block
-            break
+    content = "\n".join(text_parts)
 
-    # Fallback: use the longest block
-    if not newsletter:
-        newsletter = max(text_blocks, key=len)
-
-    # Clean the content: strip any preamble before first ## heading
-    # and any closing remarks after the sign-off
-    return clean_newsletter_content(newsletter)
+    # Clean any preamble before first heading (safety measure)
+    return clean_newsletter_content(content)
 
 
 def clean_newsletter_content(content: str) -> str:
     """
     Remove any preamble before the first section heading.
-    Matches the same safe approach used in tool-research.
+    Safety measure - should rarely be needed with 2-step approach.
     """
     import re
 
