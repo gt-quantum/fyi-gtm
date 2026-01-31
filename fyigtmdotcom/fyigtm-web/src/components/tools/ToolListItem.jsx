@@ -1,17 +1,23 @@
 import { motion } from 'framer-motion';
 import UpvoteButton from './UpvoteButton';
-import { categoryLabels } from '../../lib/taxonomy';
+import { categoryLabels, categoryToGroup, groupLabels } from '../../lib/taxonomy';
+
+// Colors for each group to make categories visually distinct
+const groupColors = {
+  'data-intelligence': '#8B5CF6',  // Purple
+  'marketing': '#EC4899',          // Pink
+  'sales': '#3B82F6',              // Blue
+  'revenue-operations': '#F59E0B', // Amber
+  'customer': '#10B981',           // Green
+  'partnerships': '#6366F1',       // Indigo
+};
 
 export default function ToolListItem({ tool, index = 0 }) {
-  const pricingLabels = {
-    free: { label: 'Free', color: '#10B981' },
-    freemium: { label: 'Freemium', color: '#3B82F6' },
-    paid: { label: 'Paid', color: '#8B5CF6' },
-    enterprise: { label: 'Enterprise', color: '#6366F1' },
-    trial: { label: 'Trial', color: '#F59E0B' },
-  };
-
-  const pricing = pricingLabels[tool.pricing] || pricingLabels.freemium;
+  // Get group from primary category
+  const group = tool.primaryCategory ? categoryToGroup[tool.primaryCategory] : null;
+  const groupLabel = group ? groupLabels[group] : null;
+  const categoryLabel = tool.primaryCategory ? (categoryLabels[tool.primaryCategory] || tool.primaryCategory) : null;
+  const categoryColor = group ? groupColors[group] : '#6B7280';
 
   const handleRowClick = (e) => {
     // Don't navigate if clicking on interactive elements
@@ -63,15 +69,22 @@ export default function ToolListItem({ tool, index = 0 }) {
             </div>
             <p className="tool-description">{tool.description}</p>
             <div className="tool-categories">
-              <span className="pricing-tag" style={{ color: pricing.color }}>
-                {pricing.label}
-              </span>
-              <a href={`/categories/${tool.primaryCategory}`} className="category-link" onClick={(e) => e.stopPropagation()}>
-                {categoryLabels[tool.primaryCategory] || tool.primaryCategory}
-              </a>
-              {tool.integrations?.slice(0, 2).map((integration, i) => (
-                <span key={i} className="tag">{integration}</span>
-              ))}
+              {groupLabel && (
+                <span className="group-label">{groupLabel}</span>
+              )}
+              {groupLabel && categoryLabel && (
+                <span className="separator">›</span>
+              )}
+              {categoryLabel && (
+                <a
+                  href={`/categories/${tool.primaryCategory}`}
+                  className="category-link"
+                  style={{ color: categoryColor }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {categoryLabel}
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -198,30 +211,31 @@ export default function ToolListItem({ tool, index = 0 }) {
 
         .tool-categories {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           flex-wrap: wrap;
           align-items: center;
         }
 
-        .pricing-tag {
+        .group-label {
           font-size: 12px;
-          font-weight: 500;
+          color: var(--color-text-muted);
+        }
+
+        .separator {
+          font-size: 12px;
+          color: var(--color-text-muted);
+          opacity: 0.5;
         }
 
         .category-link {
           font-size: 12px;
-          color: var(--color-text-muted);
+          font-weight: 500;
           text-decoration: none;
-          transition: color 0.2s;
+          transition: opacity 0.2s;
         }
 
         .category-link:hover {
-          color: var(--color-primary);
-        }
-
-        .tag {
-          font-size: 12px;
-          color: var(--color-text-muted);
+          opacity: 0.8;
         }
 
         .upvote-wrapper {
