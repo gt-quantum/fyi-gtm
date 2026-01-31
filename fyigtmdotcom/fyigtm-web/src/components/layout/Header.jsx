@@ -8,7 +8,6 @@ const navItems = [
   { label: 'Featured', href: '/featured' },
   { label: 'Top', href: '/top' },
   { label: 'Categories', href: '/categories' },
-  { label: 'Newsletter', href: '/newsletter' },
 ];
 
 const Header = () => {
@@ -101,6 +100,27 @@ const Header = () => {
               )}
             </button>
             <a
+              href="/newsletter"
+              style={styles.newsletterBtn}
+              className="header-newsletter"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                e.currentTarget.style.color = 'var(--color-primary)';
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 16, height: 16, marginRight: 6 }}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <path d="M22 6l-10 7L2 6" />
+              </svg>
+              <span style={styles.submitText}>Newsletter</span>
+            </a>
+            <a
               href="/submit"
               style={styles.submitBtn}
               className="header-submit"
@@ -156,6 +176,9 @@ const Header = () => {
                 {item.label}
               </a>
             ))}
+            <a href="/newsletter" style={styles.mobileNewsletterBtn}>
+              Newsletter
+            </a>
             <a href="/submit" style={styles.mobileSubmitBtn}>
               Submit Tool
             </a>
@@ -239,6 +262,20 @@ const styles = {
     color: 'var(--color-text-muted)',
     transition: 'color 0.2s ease',
   },
+  newsletterBtn: {
+    padding: '8px 14px',
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary)',
+    border: '1px solid var(--color-primary)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textDecoration: 'none',
+    transition: 'all 0.2s ease',
+    fontSize: '14px',
+    fontWeight: 500,
+    borderRadius: '4px',
+  },
   submitBtn: {
     padding: '8px 16px',
     backgroundColor: 'var(--color-text)',
@@ -283,8 +320,21 @@ const styles = {
     borderBottom: '1px solid var(--color-border)',
     transition: 'color 0.2s ease',
   },
-  mobileSubmitBtn: {
+  mobileNewsletterBtn: {
     marginTop: '16px',
+    padding: '14px 16px',
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary)',
+    fontSize: '16px',
+    fontWeight: 500,
+    textDecoration: 'none',
+    textAlign: 'center',
+    border: '1px solid var(--color-primary)',
+    borderRadius: '4px',
+    transition: 'all 0.2s ease',
+  },
+  mobileSubmitBtn: {
+    marginTop: '12px',
     padding: '14px 16px',
     backgroundColor: 'var(--color-text)',
     color: 'var(--color-background)',
