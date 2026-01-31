@@ -106,7 +106,7 @@ const Header = () => {
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'var(--color-primary)';
                 e.currentTarget.style.borderColor = 'var(--color-primary)';
-                e.currentTarget.style.color = 'white';
+                e.currentTarget.style.color = 'var(--color-background)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent';
