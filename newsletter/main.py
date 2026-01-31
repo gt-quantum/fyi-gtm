@@ -50,10 +50,11 @@ def run():
     print(f"  Tech: {tech['name'] if tech else 'None (will generate)'}")
     print(f"  Tips: {len(tips)} available")
 
-    # Step 3: Create run record
-    run_record = db.create_run(supabase, topic["id"] if topic else None)
+    # Step 3: Get issue number and create run record
+    issue_number = db.get_next_issue_number(supabase)
+    run_record = db.create_run(supabase, topic["id"] if topic else None, issue_number)
     run_id = run_record["id"]
-    print(f"Created run: {run_id}")
+    print(f"Created run: {run_id} (Issue #{issue_number})")
 
     try:
         # Step 4: Generate newsletter
@@ -84,13 +85,13 @@ def run():
         # Step 6: Create Kit.com draft broadcast
         print("Creating draft broadcast in Kit.com...")
 
-        # Build subject line
+        # Build subject line with issue number
         if topic:
-            subject = f"FYI GTM: {topic['topic']}"
+            subject = f"FYI GTM #{issue_number}: {topic['topic']}"
         elif tech:
-            subject = f"FYI GTM: {tech['name']} + This Week's Sales Tips"
+            subject = f"FYI GTM #{issue_number}: {tech['name']} + This Week's Sales Tips"
         else:
-            subject = "FYI GTM: This Week in Sales"
+            subject = f"FYI GTM #{issue_number}: This Week in Sales"
 
         kit_response = kit.create_draft_broadcast(
             subject=subject,

@@ -167,11 +167,18 @@ OUTPUT THE NEWSLETTER ONLY - no preamble, no explanation, start directly with th
 
     response = call_with_retry(make_request)
 
-    # Extract only the final text block (the actual newsletter, not tool-use commentary)
+    # Extract text blocks from response
     text_blocks = [block.text for block in response.content if hasattr(block, "text")]
 
     if not text_blocks:
         raise ValueError("No text content in response")
 
-    # Return only the last text block - this is the newsletter after all tool use
-    return text_blocks[-1]
+    # Find the block that contains the actual newsletter (has section headings)
+    # This avoids grabbing tool-use commentary or closing remarks
+    for block in text_blocks:
+        # Look for markdown section headings that indicate newsletter content
+        if "## " in block and len(block) > 200:
+            return block.strip()
+
+    # Fallback: return the longest block (most likely the newsletter)
+    return max(text_blocks, key=len).strip()

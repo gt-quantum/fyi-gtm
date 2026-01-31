@@ -81,11 +81,27 @@ def mark_tips_used(client, tip_ids: list):
         ).eq("id", tip_id).execute()
 
 
-def create_run(client, topic_id: str = None) -> dict:
+def get_next_issue_number(client) -> int:
+    """
+    Get the next newsletter issue number.
+    Counts completed runs and adds 1.
+    """
+    result = (
+        client.table("newsletter_runs")
+        .select("id", count="exact")
+        .eq("status", "published")
+        .execute()
+    )
+    return (result.count or 0) + 1
+
+
+def create_run(client, topic_id: str = None, issue_number: int = None) -> dict:
     """Create a new newsletter run record."""
     data = {"status": "pending"}
     if topic_id:
         data["topic_id"] = topic_id
+    if issue_number:
+        data["issue_number"] = issue_number
     result = client.table("newsletter_runs").insert(data).execute()
     return result.data[0]
 
