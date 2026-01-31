@@ -4,6 +4,6 @@ import cloudflare from '@astrojs/cloudflare';
 
 export default defineConfig({
   integrations: [react()],
-  output: 'hybrid',
+  output: 'static',
   adapter: cloudflare(),
 });
