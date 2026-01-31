@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Taxonomy - must match src/lib/taxonomy.ts
 const GROUPS = [
-  { value: 'data-intelligence', label: 'Data & Intelligence' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'revenue-operations', label: 'Revenue Operations' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'partnerships', label: 'Partnerships' },
+  { value: 'data-intelligence', label: 'Data & Intelligence', color: '#8B5CF6' },
+  { value: 'marketing', label: 'Marketing', color: '#EC4899' },
+  { value: 'sales', label: 'Sales', color: '#3B82F6' },
+  { value: 'revenue-operations', label: 'Revenue Operations', color: '#F59E0B' },
+  { value: 'customer', label: 'Customer', color: '#10B981' },
+  { value: 'partnerships', label: 'Partnerships', color: '#6366F1' },
 ];
 
 const CATEGORIES = [
@@ -126,7 +126,9 @@ export default function GroupCategoryFilter({ tools, onFilterChange, initialGrou
             key={group.value}
             className={`group-tab ${activeGroup === group.value ? 'active' : ''}`}
             onClick={() => handleGroupClick(group.value)}
+            style={{ '--group-color': group.color }}
           >
+            <span className="group-dot" />
             {group.label}
             <span className="tab-count">{groupCounts[group.value] || 0}</span>
           </button>
@@ -142,6 +144,7 @@ export default function GroupCategoryFilter({ tools, onFilterChange, initialGrou
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
+            style={{ '--group-color': GROUPS.find(g => g.value === activeGroup)?.color }}
           >
             <button
               className={`category-tab ${!activeCategory ? 'active' : ''}`}
@@ -194,21 +197,33 @@ export default function GroupCategoryFilter({ tools, onFilterChange, initialGrou
           white-space: nowrap;
         }
 
+        .group-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--group-color);
+          flex-shrink: 0;
+        }
+
         .group-tab:hover {
           background: var(--color-background-tertiary);
-          border-color: var(--color-border-hover);
+          border-color: var(--group-color);
           color: var(--color-text);
         }
 
         .group-tab.active {
-          background: var(--color-text);
-          border-color: var(--color-text);
-          color: var(--color-background);
+          background: var(--group-color);
+          border-color: var(--group-color);
+          color: white;
+        }
+
+        .group-tab.active .group-dot {
+          background: white;
         }
 
         .group-tab.active .tab-count {
           background: rgba(255, 255, 255, 0.2);
-          color: var(--color-background);
+          color: white;
         }
 
         .tab-count {
@@ -227,6 +242,7 @@ export default function GroupCategoryFilter({ tools, onFilterChange, initialGrou
           padding: 12px;
           background: var(--color-background-secondary);
           border: 1px solid var(--color-border);
+          border-left: 3px solid var(--group-color);
           border-radius: 8px;
           overflow: hidden;
         }
@@ -248,19 +264,19 @@ export default function GroupCategoryFilter({ tools, onFilterChange, initialGrou
         }
 
         .category-tab:hover {
-          border-color: var(--color-border-hover);
+          border-color: var(--group-color);
           color: var(--color-text);
         }
 
         .category-tab.active {
-          background: var(--color-text);
-          border-color: var(--color-text);
-          color: var(--color-background);
+          background: var(--group-color);
+          border-color: var(--group-color);
+          color: white;
         }
 
         .category-tab.active .tab-count {
           background: rgba(255, 255, 255, 0.2);
-          color: var(--color-background);
+          color: white;
         }
 
         .category-tab .tab-count {

@@ -94,7 +94,7 @@ const groupDescriptions: Record<string, string> = {
               {groupCats.map((cat) => {
                 const catData = categoriesData.find(c => c.slug === cat);
                 return (
-                  <a href={`/categories/${cat}`} class="category-card">
+                  <a href={`/categories/${cat}`} class="category-card" style={`--group-color: ${groupColors[group]}`}>
                     <div class="category-content">
                       <h3 class="category-name">{categoryLabels[cat]}</h3>
                       <span class="category-count">{categoryCounts[cat]} tools</span>
@@ -266,13 +266,18 @@ const groupDescriptions: Record<string, string> = {
   }
 
   .category-card:hover {
-    border-color: var(--color-border-hover);
+    border-color: var(--group-color);
     background: var(--color-background-secondary);
+  }
+
+  .category-card:hover .category-name {
+    color: var(--group-color);
   }
 
   .category-card:hover .category-arrow {
     transform: translateX(4px);
     opacity: 1;
+    color: var(--group-color);
   }
 
   .category-content {
