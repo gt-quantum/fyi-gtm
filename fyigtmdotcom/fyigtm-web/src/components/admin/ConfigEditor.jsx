@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react';
 
+const DEFAULT_STRUCTURE = `## 1️⃣ Sales Tech Spotlight
+Feature ONE sales technology. If a specific tech was provided above, use it. Otherwise, choose something relevant and timely.
+Brief description of what it does and why it matters now.
+
+## 2️⃣ Two Tips to Try This Week
+Two actionable tips. If specific tips were provided above, expand on them. Otherwise, generate relevant tips based on the newsletter context.
+Keep them practical and specific.
+
+## 3️⃣ Three Takeaways
+Three quick insights or learnings. These should be observations, stats, or lessons relevant to the audience.`;
+
 export default function ConfigEditor({ token }) {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -150,17 +161,9 @@ export default function ConfigEditor({ token }) {
           </p>
           <textarea
             className="form-textarea"
-            value={config.structure || ''}
+            value={config.structure || DEFAULT_STRUCTURE}
             onChange={(e) => handleChange('structure', e.target.value)}
             rows={20}
-            placeholder={`## 1️⃣ Sales Tech Spotlight
-Feature ONE sales technology. If a specific tech was provided above, use it. Otherwise, choose something relevant and timely.
-
-## 2️⃣ Two Tips to Try This Week
-Two actionable tips. If specific tips were provided above, expand on them. Otherwise, generate relevant tips.
-
-## 3️⃣ Three Takeaways
-Three quick insights or learnings relevant to the audience.`}
             style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
           />
         </div>
