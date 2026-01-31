@@ -119,17 +119,24 @@ def generate_newsletter(
         return client.messages.create(
             model=WRITING_MODEL,
             max_tokens=MAX_WRITING_TOKENS,
+            system="""You are a newsletter writer. Your output will be sent directly to subscribers.
+
+CRITICAL: Output ONLY the newsletter content. Never include:
+- Explanations of what you're doing ("I'll search for...", "Let me find...")
+- Meta-commentary about the writing process
+- References to being an AI, Claude, or using tools
+- Preambles or conclusions about your research
+
+Start your response with the first section heading. End with only the sign-off.""",
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
             messages=[
                 {
                     "role": "user",
-                    "content": f"""You are a newsletter writer. Write this week's newsletter using the structure below.
-
-{context_section}
+                    "content": f"""{context_section}
 
 {backlog_section}
 
-Use web search to research current, relevant information for each section. You can search multiple times to ensure accuracy and freshness.
+Use web search to research current, relevant information, then write the newsletter.
 
 NEWSLETTER STRUCTURE:
 
@@ -153,13 +160,18 @@ IMAGES:
 - Place images after the section heading, before the text
 - Skip images if none feel relevant
 
-Write the newsletter now:""",
+OUTPUT THE NEWSLETTER ONLY - no preamble, no explanation, start directly with the first section:""",
                 }
             ],
         )
 
     response = call_with_retry(make_request)
 
-    # Extract text from response
-    text_parts = [block.text for block in response.content if hasattr(block, "text")]
-    return "\n".join(text_parts)
+    # Extract only the final text block (the actual newsletter, not tool-use commentary)
+    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+
+    if not text_blocks:
+        raise ValueError("No text content in response")
+
+    # Return only the last text block - this is the newsletter after all tool use
+    return text_blocks[-1]
