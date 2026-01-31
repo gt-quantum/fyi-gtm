@@ -96,7 +96,6 @@ const Footer = () => {
               <LinkWithHover href="/new" id="new">New Tools</LinkWithHover>
               <LinkWithHover href="/featured" id="featured">Featured</LinkWithHover>
               <LinkWithHover href="/top" id="top">Top Rated</LinkWithHover>
-              <LinkWithHover href="/deals" id="deals">Deals</LinkWithHover>
               <LinkWithHover href="/categories" id="categories">Categories</LinkWithHover>
             </nav>
           </div>

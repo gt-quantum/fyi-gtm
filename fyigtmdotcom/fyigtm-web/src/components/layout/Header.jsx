@@ -7,7 +7,6 @@ const navItems = [
   { label: 'New', href: '/new' },
   { label: 'Featured', href: '/featured' },
   { label: 'Top', href: '/top' },
-  { label: 'Deals', href: '/deals' },
   { label: 'Categories', href: '/categories' },
   { label: 'Newsletter', href: '/newsletter' },
 ];
