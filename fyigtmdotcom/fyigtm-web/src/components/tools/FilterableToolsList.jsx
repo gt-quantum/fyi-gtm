@@ -158,7 +158,12 @@ export default function FilterableToolsList({ tools, defaultSort = 'newest' }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <div className="no-results-icon">🔍</div>
+              <div className="no-results-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="m21 21-4.35-4.35"/>
+                </svg>
+              </div>
               <h3>No tools found</h3>
               <p>
                 {searchQuery
@@ -260,7 +265,7 @@ export default function FilterableToolsList({ tools, defaultSort = 'newest' }) {
         }
 
         .no-results-icon {
-          font-size: 2rem;
+          color: var(--color-text-muted);
           margin-bottom: 12px;
         }
 

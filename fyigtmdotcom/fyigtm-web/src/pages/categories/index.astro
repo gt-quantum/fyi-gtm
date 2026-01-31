@@ -34,14 +34,14 @@ groups.forEach(group => {
   ).length;
 });
 
-// Group icons (you can customize these)
-const groupIcons: Record<string, string> = {
-  'data-intelligence': '📊',
-  'marketing': '📣',
-  'sales': '💼',
-  'revenue-operations': '⚙️',
-  'customer': '🤝',
-  'partnerships': '🤲',
+// Group colors for visual distinction
+const groupColors: Record<string, string> = {
+  'data-intelligence': '#8B5CF6',  // Purple
+  'marketing': '#EC4899',          // Pink
+  'sales': '#3B82F6',              // Blue
+  'revenue-operations': '#F59E0B', // Amber
+  'customer': '#10B981',           // Green
+  'partnerships': '#6366F1',       // Indigo
 };
 
 // Group descriptions
@@ -67,8 +67,8 @@ const groupDescriptions: Record<string, string> = {
     <!-- Quick Jump Navigation -->
     <nav class="group-jump-nav">
       {groups.map((group) => (
-        <a href={`#${group}`} class="jump-link">
-          <span class="jump-icon">{groupIcons[group]}</span>
+        <a href={`#${group}`} class="jump-link" style={`--group-color: ${groupColors[group]}`}>
+          <span class="jump-dot"></span>
           <span class="jump-label">{groupLabels[group]}</span>
         </a>
       ))}
@@ -78,9 +78,9 @@ const groupDescriptions: Record<string, string> = {
       {groups.map((group) => {
         const groupCats = getCategoriesForGroup(group);
         return (
-          <section class="group-section" id={group}>
+          <section class="group-section" id={group} style={`--group-color: ${groupColors[group]}`}>
             <div class="group-header">
-              <div class="group-icon">{groupIcons[group]}</div>
+              <div class="group-color-bar"></div>
               <div class="group-info">
                 <h2 class="group-title">
                   {groupLabels[group]}
@@ -172,13 +172,17 @@ const groupDescriptions: Record<string, string> = {
   }
 
   .jump-link:hover {
-    border-color: var(--color-border-hover);
+    border-color: var(--group-color);
     color: var(--color-text);
     background: var(--color-background-tertiary);
   }
 
-  .jump-icon {
-    font-size: 1rem;
+  .jump-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--group-color);
+    flex-shrink: 0;
   }
 
   .jump-label {
@@ -204,9 +208,11 @@ const groupDescriptions: Record<string, string> = {
     border-bottom: 1px solid var(--color-border);
   }
 
-  .group-icon {
-    font-size: 2rem;
-    line-height: 1;
+  .group-color-bar {
+    width: 4px;
+    min-height: 100%;
+    background: var(--group-color);
+    border-radius: 2px;
     flex-shrink: 0;
   }
 
@@ -326,8 +332,9 @@ const groupDescriptions: Record<string, string> = {
       display: none;
     }
 
-    .jump-icon {
-      font-size: 1.25rem;
+    .jump-dot {
+      width: 12px;
+      height: 12px;
     }
 
     .group-header {
