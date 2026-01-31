@@ -58,6 +58,7 @@ export const PUT: APIRoute = async ({ request, locals }) => {
         themes: body.themes,
         tone: body.tone,
         avoid: body.avoid,
+        structure: body.structure,
         updated_at: new Date().toISOString(),
       })
       .eq('id', body.id)

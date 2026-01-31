@@ -143,6 +143,28 @@ export default function ConfigEditor({ token }) {
           />
         </div>
 
+        <div className="form-group">
+          <label className="form-label">Newsletter Structure</label>
+          <p className="form-hint">
+            Define the sections and instructions for the newsletter. Use phrases like "If a specific tech was provided above, use it" to enable fallback behavior.
+          </p>
+          <textarea
+            className="form-textarea"
+            value={config.structure || ''}
+            onChange={(e) => handleChange('structure', e.target.value)}
+            rows={20}
+            placeholder={`## 1️⃣ Sales Tech Spotlight
+Feature ONE sales technology. If a specific tech was provided above, use it. Otherwise, choose something relevant and timely.
+
+## 2️⃣ Two Tips to Try This Week
+Two actionable tips. If specific tips were provided above, expand on them. Otherwise, generate relevant tips.
+
+## 3️⃣ Three Takeaways
+Three quick insights or learnings relevant to the audience.`}
+            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+          />
+        </div>
+
         <div className="config-actions">
           <button type="submit" className="save-button" disabled={saving}>
             {saving ? 'Saving...' : 'Save Configuration'}

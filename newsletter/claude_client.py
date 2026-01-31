@@ -3,6 +3,18 @@ import anthropic
 
 from .config import ANTHROPIC_API_KEY, WRITING_MODEL, MAX_WRITING_TOKENS
 
+# Default newsletter structure used when none is configured in the database
+DEFAULT_STRUCTURE = """## 1️⃣ Sales Tech Spotlight
+Feature ONE sales technology. If a specific tech was provided above, use it. Otherwise, choose something relevant and timely.
+Brief description of what it does and why it matters now.
+
+## 2️⃣ Two Tips to Try This Week
+Two actionable tips. If specific tips were provided above, expand on them. Otherwise, generate relevant tips based on the newsletter context.
+Keep them practical and specific.
+
+## 3️⃣ Three Takeaways
+Three quick insights or learnings. These should be observations, stats, or lessons relevant to the audience."""
+
 
 def get_client():
     """Create and return Anthropic client."""
@@ -74,6 +86,13 @@ def build_backlog_section(topic: dict | None, tech: dict | None, tips: list) -> 
     return "\n".join(parts)
 
 
+def get_structure(config: dict | None) -> str:
+    """Get the newsletter structure from config or use default."""
+    if config and config.get("structure"):
+        return config["structure"]
+    return DEFAULT_STRUCTURE
+
+
 def generate_newsletter(
     client,
     config: dict | None = None,
@@ -87,6 +106,7 @@ def generate_newsletter(
     """
     context_section = build_context_section(config)
     backlog_section = build_backlog_section(topic, tech, tips or [])
+    structure_section = get_structure(config)
 
     def make_request():
         return client.messages.create(
@@ -106,16 +126,7 @@ Do a quick web search to find current, relevant information to supplement the co
 
 NEWSLETTER STRUCTURE:
 
-## 1️⃣ Sales Tech Spotlight
-Feature ONE sales technology. If a specific tech was provided above, use it. Otherwise, choose something relevant and timely.
-Brief description of what it does and why it matters now.
-
-## 2️⃣ Two Tips to Try This Week
-Two actionable tips. If specific tips were provided above, expand on them. Otherwise, generate relevant tips based on the newsletter context.
-Keep them practical and specific.
-
-## 3️⃣ Three Takeaways
-Three quick insights or learnings. These should be observations, stats, or lessons relevant to the audience.
+{structure_section}
 
 ---
 
