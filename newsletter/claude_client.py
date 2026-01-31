@@ -5,15 +5,22 @@ from .config import ANTHROPIC_API_KEY, WRITING_MODEL, MAX_WRITING_TOKENS
 
 # Default newsletter structure used when none is configured in the database
 DEFAULT_STRUCTURE = """## 1️⃣ Sales Tech Spotlight
-Feature ONE sales technology. If a specific tech was provided above, use it. Otherwise, choose something relevant and timely.
-Brief description of what it does and why it matters now.
+Feature ONE sales technology.
+- If TECH TO SPOTLIGHT was provided above, use it and research current details about that tool.
+- If no tech was provided, search for a trending or noteworthy sales tool and feature it.
+Include: what it does, why it matters now, and a practical use case.
 
 ## 2️⃣ Two Tips to Try This Week
-Two actionable tips. If specific tips were provided above, expand on them. Otherwise, generate relevant tips based on the newsletter context.
-Keep them practical and specific.
+Two actionable sales tips.
+- If TIPS TO INCLUDE were provided above, expand on those with practical context.
+- If no tips were provided, generate two relevant tips based on the newsletter context and current trends.
+Keep each tip specific and immediately actionable.
 
 ## 3️⃣ Three Takeaways
-Three quick insights or learnings. These should be observations, stats, or lessons relevant to the audience."""
+Three quick insights, stats, or lessons relevant to the audience.
+- If a TOPIC TO COVER was provided above, tie at least one takeaway to that theme.
+- Research current data or trends to make these timely and credible.
+Each takeaway should be 1-2 sentences max."""
 
 
 def get_client():
@@ -112,7 +119,7 @@ def generate_newsletter(
         return client.messages.create(
             model=WRITING_MODEL,
             max_tokens=MAX_WRITING_TOKENS,
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}],
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
             messages=[
                 {
                     "role": "user",
@@ -122,7 +129,7 @@ def generate_newsletter(
 
 {backlog_section}
 
-Do a quick web search to find current, relevant information to supplement the content, then write the newsletter.
+Use web search to research current, relevant information for each section. You can search multiple times to ensure accuracy and freshness.
 
 NEWSLETTER STRUCTURE:
 
