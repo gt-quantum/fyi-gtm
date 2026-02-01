@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import UpvoteButton from './UpvoteButton';
 
+// Check if a tool is "new" (published within last 15 days)
+const isToolNew = (publishedAt) => {
+  if (!publishedAt) return false;
+  const publishDate = new Date(publishedAt);
+  const now = new Date();
+  const diffInDays = (now - publishDate) / (1000 * 60 * 60 * 24);
+  return diffInDays <= 15;
+};
+
 // Grayscale pricing indicators
 const pricingStyles = {
   free: { bg: 'var(--color-text)', text: 'var(--color-background)' },
@@ -72,7 +81,7 @@ const ToolCard = ({
         {/* Title and badges */}
         <div style={styles.titleRow}>
           <h3 style={styles.title}>{tool.name}</h3>
-          {tool.isNew && <span style={styles.newBadge}>NEW</span>}
+          {isToolNew(tool.publishedAt) && <span style={styles.newBadge}>NEW</span>}
           {tool.hasDeal && <span style={styles.dealBadge}>DEAL</span>}
         </div>
 
