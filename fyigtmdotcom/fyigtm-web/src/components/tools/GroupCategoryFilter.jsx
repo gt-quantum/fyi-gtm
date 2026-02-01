@@ -171,14 +171,17 @@ export default function GroupCategoryFilter({ tools, onFilterChange, initialGrou
 
       <style jsx>{`
         .group-category-filter {
-          margin-bottom: 24px;
+          margin: 0 0 24px 0;
+          padding: 0;
+          width: 100%;
         }
 
         .group-tabs {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
-          margin-bottom: 12px;
+          margin: 0 0 12px 0;
+          padding: 0;
         }
 
         .group-tab {
@@ -286,35 +289,21 @@ export default function GroupCategoryFilter({ tools, onFilterChange, initialGrou
 
         @media (max-width: 768px) {
           .group-tabs {
-            overflow-x: auto;
-            flex-wrap: nowrap;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-          }
-
-          .group-tabs::-webkit-scrollbar {
-            display: none;
+            gap: 6px;
           }
 
           .group-tab {
-            flex-shrink: 0;
+            padding: 6px 10px;
+            font-size: 12px;
           }
 
           .category-tabs {
-            overflow-x: auto;
-            flex-wrap: nowrap;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-          }
-
-          .category-tabs::-webkit-scrollbar {
-            display: none;
+            padding: 10px;
           }
 
           .category-tab {
-            flex-shrink: 0;
+            padding: 5px 10px;
+            font-size: 11px;
           }
         }
       `}</style>

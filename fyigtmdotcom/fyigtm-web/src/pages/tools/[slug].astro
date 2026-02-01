@@ -3,7 +3,17 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ToolListItem from '../../components/tools/ToolListItem.jsx';
 import UpvoteButton from '../../components/tools/UpvoteButton.jsx';
-import { categoryLabels } from '../../lib/taxonomy';
+import { categoryLabels, categoryToGroup, groupLabels } from '../../lib/taxonomy';
+
+// Colors for each group to make categories visually distinct
+const groupColors = {
+  'data-intelligence': '#8B5CF6',  // Purple
+  'marketing': '#EC4899',          // Pink
+  'sales': '#3B82F6',              // Blue
+  'revenue-operations': '#F59E0B', // Amber
+  'customer': '#10B981',           // Green
+  'partnerships': '#6366F1',       // Indigo
+};
 
 export async function getStaticPaths() {
   const toolsEntries = await getCollection('tools');
@@ -29,15 +39,11 @@ const relatedTools = toolsData
 // Get featured tools for sidebar
 const featuredTools = toolsData.filter(t => t.featured && t.slug !== tool.slug).slice(0, 3);
 
-const pricingLabels = {
-  free: { label: 'Free', color: '#10B981' },
-  freemium: { label: 'Freemium', color: '#3B82F6' },
-  paid: { label: 'Paid', color: '#8B5CF6' },
-  enterprise: { label: 'Enterprise', color: '#6366F1' },
-  trial: { label: 'Free Trial', color: '#F59E0B' },
-};
-
-const pricing = pricingLabels[tool.pricing] || pricingLabels.free;
+// Get group from primary category
+const group = tool.primaryCategory ? categoryToGroup[tool.primaryCategory] : null;
+const groupLabel = group ? groupLabels[group] : null;
+const categoryLabel = tool.primaryCategory ? (categoryLabels[tool.primaryCategory] || tool.primaryCategory) : null;
+const categoryColor = group ? groupColors[group] : '#6B7280';
 
 // Format date
 const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
@@ -106,6 +112,28 @@ const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
             <UpvoteButton client:load slug={tool.slug} initialUpvotes={tool.upvotes} variant="detail" />
           </div>
         </div>
+
+        <!-- Tags (Group > Category) -->
+        <div class="tool-tags">
+          {groupLabel && (
+            <span
+              class="group-tag"
+              style={`background: ${categoryColor}15; color: ${categoryColor}; border-color: ${categoryColor}30;`}
+            >
+              {groupLabel}
+            </span>
+          )}
+          {categoryLabel && (
+            <a
+              href={`/categories/${tool.primaryCategory}`}
+              class="category-tag"
+              style={`background: ${categoryColor}20; color: ${categoryColor}; border-color: ${categoryColor}40;`}
+            >
+              {categoryLabel}
+            </a>
+          )}
+        </div>
+
         <!-- Website Screenshot -->
         <div class="screenshot-section">
           <a href={tool.url} target="_blank" rel="noopener noreferrer" class="screenshot-link">
@@ -124,19 +152,6 @@ const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
               </svg>
             </div>
           </a>
-        </div>
-
-        <!-- Tags -->
-        <div class="tool-tags">
-          <span class="pricing-tag" style={`background: ${pricing.color}20; color: ${pricing.color};`}>
-            {pricing.label}
-          </span>
-          <a href={`/categories/${tool.primaryCategory}`} class="category-tag">
-            {categoryLabels[tool.primaryCategory]}
-          </a>
-          {tool.integrations.slice(0, 3).map(integration => (
-            <span class="category-tag">{integration}</span>
-          ))}
         </div>
 
         <!-- Content Tabs -->
@@ -491,28 +506,34 @@ const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    align-items: center;
     margin-bottom: 24px;
   }
 
-  .pricing-tag {
-    padding: 6px 14px;
+  .group-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
     font-size: 13px;
     font-weight: 500;
     border-radius: 6px;
+    border: 1px solid;
   }
 
   .category-tag {
-    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
     font-size: 13px;
-    background: var(--color-background-secondary);
-    color: var(--color-text-muted);
+    font-weight: 600;
     border-radius: 6px;
+    border: 1px solid;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: all 0.15s ease;
   }
 
   .category-tag:hover {
-    color: var(--color-primary);
+    filter: brightness(0.9);
   }
 
   /* Tabs */

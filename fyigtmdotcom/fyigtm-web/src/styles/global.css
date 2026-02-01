@@ -14,6 +14,7 @@ html {
 body {
   min-height: 100vh;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 img, picture, video, canvas, svg {
@@ -248,9 +249,17 @@ p {
   margin: 24px 0;
 }
 
+/* Table wrapper for horizontal scrolling on mobile */
+.prose .table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin: 24px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
 .prose table {
   width: 100%;
-  margin: 24px 0;
+  min-width: 500px;
   border-collapse: collapse;
 }
 
@@ -259,6 +268,15 @@ p {
   padding: 12px;
   text-align: left;
   border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .prose th,
+  .prose td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
 }
 
 .prose th {

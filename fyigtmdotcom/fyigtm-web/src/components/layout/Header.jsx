@@ -203,7 +203,7 @@ const styles = {
   container: {
     maxWidth: 'var(--container-max-width)',
     margin: '0 auto',
-    padding: '0 24px',
+    padding: '0 var(--content-padding)',
     height: '100%',
     display: 'flex',
     alignItems: 'center',
@@ -307,7 +307,7 @@ const styles = {
     right: 0,
     backgroundColor: 'var(--color-background)',
     borderBottom: '1px solid var(--color-border)',
-    padding: '16px 24px',
+    padding: '16px var(--content-padding)',
     zIndex: 999,
     display: 'flex',
     flexDirection: 'column',

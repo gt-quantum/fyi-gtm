@@ -70,16 +70,26 @@ export default function ToolListItem({ tool, index = 0 }) {
             <p className="tool-description">{tool.description}</p>
             <div className="tool-categories">
               {groupLabel && (
-                <span className="group-label">{groupLabel}</span>
-              )}
-              {groupLabel && categoryLabel && (
-                <span className="separator">›</span>
+                <span
+                  className="group-tag"
+                  style={{
+                    background: `${categoryColor}15`,
+                    color: categoryColor,
+                    borderColor: `${categoryColor}30`
+                  }}
+                >
+                  {groupLabel}
+                </span>
               )}
               {categoryLabel && (
                 <a
                   href={`/categories/${tool.primaryCategory}`}
-                  className="category-link"
-                  style={{ color: categoryColor }}
+                  className="category-tag"
+                  style={{
+                    background: `${categoryColor}20`,
+                    color: categoryColor,
+                    borderColor: `${categoryColor}40`
+                  }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {categoryLabel}
@@ -216,26 +226,30 @@ export default function ToolListItem({ tool, index = 0 }) {
           align-items: center;
         }
 
-        .group-label {
-          font-size: 12px;
-          color: var(--color-text-muted);
-        }
-
-        .separator {
-          font-size: 12px;
-          color: var(--color-text-muted);
-          opacity: 0.5;
-        }
-
-        .category-link {
-          font-size: 12px;
+        .group-tag {
+          display: inline-flex;
+          align-items: center;
+          padding: 3px 8px;
+          font-size: 11px;
           font-weight: 500;
-          text-decoration: none;
-          transition: opacity 0.2s;
+          border-radius: 4px;
+          border: 1px solid;
         }
 
-        .category-link:hover {
-          opacity: 0.8;
+        .category-tag {
+          display: inline-flex;
+          align-items: center;
+          padding: 3px 8px;
+          font-size: 11px;
+          font-weight: 600;
+          border-radius: 4px;
+          border: 1px solid;
+          text-decoration: none;
+          transition: all 0.15s ease;
+        }
+
+        .category-tag:hover {
+          filter: brightness(0.9);
         }
 
         .upvote-wrapper {

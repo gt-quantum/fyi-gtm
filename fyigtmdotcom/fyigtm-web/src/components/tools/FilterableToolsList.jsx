@@ -190,14 +190,16 @@ export default function FilterableToolsList({ tools, defaultSort = 'newest' }) {
       <style jsx>{`
         .filterable-tools-list {
           width: 100%;
+          margin: 0;
+          padding: 0;
         }
 
         .results-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 16px;
-          padding-bottom: 12px;
+          margin: 0 0 16px 0;
+          padding: 0 0 12px 0;
           border-bottom: 1px solid var(--color-border);
         }
 
