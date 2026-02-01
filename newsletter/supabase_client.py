@@ -84,15 +84,17 @@ def mark_tips_used(client, tip_ids: list):
 def get_next_issue_number(client) -> int:
     """
     Get the next newsletter issue number.
-    Counts completed runs and adds 1.
+    Counts completed runs and adds to the starting issue number.
     """
+    STARTING_ISSUE = 86  # Newsletter issues started before this system
+
     result = (
         client.table("newsletter_runs")
         .select("id", count="exact")
         .eq("status", "published")
         .execute()
     )
-    return (result.count or 0) + 1
+    return STARTING_ISSUE + (result.count or 0)
 
 
 def create_run(client, topic_id: str = None, issue_number: int = None) -> dict:
