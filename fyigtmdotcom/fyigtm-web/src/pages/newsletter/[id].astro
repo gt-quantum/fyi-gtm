@@ -72,6 +72,29 @@ const htmlContent = marked(newsletter.newsletter_content || '');
         <!-- Newsletter Content -->
         <div class="newsletter-content prose" set:html={htmlContent} />
       </article>
+
+      <!-- Newsletter Subscribe CTA -->
+      <section class="subscribe-section">
+        <div class="subscribe-content">
+          <h2 class="subscribe-title">Stay ahead of the curve</h2>
+          <p class="subscribe-text">
+            Get the latest GTM tools and strategies delivered to your inbox weekly.
+          </p>
+          <form class="subscribe-form" id="newsletter-form">
+            <input
+              type="email"
+              placeholder="Enter your email"
+              class="subscribe-input"
+              id="newsletter-email"
+              required
+            />
+            <button type="submit" class="subscribe-button" id="newsletter-submit">
+              Subscribe
+            </button>
+          </form>
+          <p class="subscribe-status" id="newsletter-status"></p>
+        </div>
+      </section>
     </div>
   </div>
 </BaseLayout>
@@ -144,6 +167,101 @@ const htmlContent = marked(newsletter.newsletter_content || '');
     max-width: 100%;
   }
 
+  /* Subscribe CTA Section */
+  .subscribe-section {
+    background: var(--color-background-secondary);
+    border: 1px solid var(--color-border);
+    padding: 48px;
+    margin-top: 32px;
+    text-align: center;
+    transition: border-color 0.2s ease;
+  }
+
+  .subscribe-section:hover {
+    border-color: var(--color-border-hover);
+  }
+
+  .subscribe-content {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .subscribe-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--color-text);
+  }
+
+  .subscribe-text {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0 0 24px;
+  }
+
+  .subscribe-form {
+    display: flex;
+    gap: 0;
+  }
+
+  .subscribe-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+    border-radius: 0;
+    -webkit-appearance: none;
+  }
+
+  .subscribe-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .subscribe-input:focus {
+    border-color: var(--color-text);
+  }
+
+  .subscribe-button {
+    padding: 12px 24px;
+    background-color: var(--color-text);
+    color: var(--color-background);
+    border: 1px solid var(--color-text);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 0;
+    -webkit-appearance: none;
+  }
+
+  .subscribe-button:hover {
+    background-color: transparent;
+    color: var(--color-text);
+  }
+
+  .subscribe-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .subscribe-status {
+    margin-top: 12px;
+    font-size: 0.875rem;
+    min-height: 1.25em;
+  }
+
+  .subscribe-status.success {
+    color: #10B981;
+  }
+
+  .subscribe-status.error {
+    color: #EF4444;
+  }
+
   @media (max-width: 768px) {
     .newsletter-article {
       padding: 20px;
@@ -152,5 +270,73 @@ const htmlContent = marked(newsletter.newsletter_content || '');
     .newsletter-title {
       font-size: 1.5rem;
     }
+
+    .subscribe-section {
+      padding: 32px 24px;
+    }
+
+    .subscribe-form {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .subscribe-input,
+    .subscribe-button {
+      width: 100%;
+    }
   }
 </style>
+
+<script>
+  const form = document.getElementById('newsletter-form');
+  const emailInput = document.getElementById('newsletter-email') as HTMLInputElement;
+  const submitBtn = document.getElementById('newsletter-submit') as HTMLButtonElement;
+  const statusEl = document.getElementById('newsletter-status');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = emailInput?.value?.trim();
+    if (!email) return;
+
+    // Update UI for loading state
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Subscribing...';
+    }
+    if (statusEl) {
+      statusEl.textContent = '';
+      statusEl.className = 'subscribe-status';
+    }
+
+    try {
+      const response = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (statusEl) {
+          statusEl.textContent = 'Thanks for subscribing!';
+          statusEl.className = 'subscribe-status success';
+        }
+        if (emailInput) emailInput.value = '';
+      } else {
+        throw new Error(data.error || 'Failed to subscribe');
+      }
+    } catch (error) {
+      if (statusEl) {
+        statusEl.textContent = 'Something went wrong. Please try again.';
+        statusEl.className = 'subscribe-status error';
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Subscribe';
+      }
+    }
+  });
+</script>
