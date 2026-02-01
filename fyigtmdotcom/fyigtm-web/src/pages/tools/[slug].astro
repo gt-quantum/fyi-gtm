@@ -134,14 +134,14 @@ const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
           )}
         </div>
 
-        <!-- Website Screenshot -->
-        <div class="screenshot-section">
+        <!-- Website Screenshot (hidden until loaded) -->
+        <div class="screenshot-section" id="screenshot-section">
           <a href={tool.url} target="_blank" rel="noopener noreferrer" class="screenshot-link">
             <img
               src={`https://image.thum.io/get/width/1280/crop/800/${tool.url}`}
               alt={`${tool.name} website screenshot`}
               class="screenshot-image"
-              loading="lazy"
+              id="screenshot-image"
             />
             <div class="screenshot-overlay">
               <span>Visit {tool.name}</span>
@@ -459,6 +459,11 @@ const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
   /* Screenshot */
   .screenshot-section {
     margin-bottom: 24px;
+    display: none;
+  }
+
+  .screenshot-section.loaded {
+    display: block;
   }
 
   .screenshot-link {
@@ -784,4 +789,25 @@ const dateAdded = new Date(tool.publishedAt).toLocaleDateString('en-US', {
       document.getElementById(`${tabId}-panel`)?.classList.add('active');
     });
   });
+
+  // Screenshot loading - only show when image loads successfully
+  const screenshotSection = document.getElementById('screenshot-section');
+  const screenshotImage = document.getElementById('screenshot-image') as HTMLImageElement;
+
+  if (screenshotImage && screenshotSection) {
+    // Check if image is already loaded (cached)
+    if (screenshotImage.complete && screenshotImage.naturalHeight !== 0) {
+      screenshotSection.classList.add('loaded');
+    } else {
+      // Wait for load event
+      screenshotImage.addEventListener('load', () => {
+        screenshotSection.classList.add('loaded');
+      });
+
+      // Hide on error (image failed to load)
+      screenshotImage.addEventListener('error', () => {
+        screenshotSection.style.display = 'none';
+      });
+    }
+  }
 </script>
