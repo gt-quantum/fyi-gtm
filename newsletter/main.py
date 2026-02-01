@@ -46,13 +46,25 @@ def run():
     tech = db.get_next_tech(supabase)
     tips = db.get_next_tips(supabase, count=2)
 
-    print(f"  Topic: {topic['topic'] if topic else 'None (will generate)'}")
+    # If no topic available, generate one
+    if not topic:
+        print("  No topic in backlog, generating one...")
+        generated = claude.generate_topic(anthropic, newsletter_config)
+        topic = db.create_topic(
+            supabase,
+            topic=generated["topic"],
+            description=generated.get("description"),
+            auto_generated=True
+        )
+        print(f"  Generated topic: {topic['topic']}")
+
+    print(f"  Topic: {topic['topic'] if topic else 'None'}")
     print(f"  Tech: {tech['name'] if tech else 'None (will generate)'}")
     print(f"  Tips: {len(tips)} available")
 
     # Step 3: Get issue number and create run record
     issue_number = db.get_next_issue_number(supabase)
-    run_record = db.create_run(supabase, topic["id"] if topic else None, issue_number)
+    run_record = db.create_run(supabase, topic["id"], issue_number)
     run_id = run_record["id"]
     print(f"Created run: {run_id} (Issue #{issue_number})")
 
@@ -85,13 +97,8 @@ def run():
         # Step 6: Create Kit.com draft broadcast
         print("Creating draft broadcast in Kit.com...")
 
-        # Build subject line with issue number
-        if topic:
-            subject = f"FYI GTM #{issue_number}: {topic['topic']}"
-        elif tech:
-            subject = f"FYI GTM #{issue_number}: {tech['name']} + This Week's Sales Tips"
-        else:
-            subject = f"FYI GTM #{issue_number}: This Week in Sales"
+        # Build subject line with issue number and topic
+        subject = f"FYI GTM #{issue_number}: {topic['topic']}"
 
         kit_response = kit.create_draft_broadcast(
             subject=subject,

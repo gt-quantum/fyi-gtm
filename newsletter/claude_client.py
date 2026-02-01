@@ -32,6 +32,73 @@ def get_client():
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
+def generate_topic(client, config: dict | None = None) -> dict:
+    """
+    Generate a newsletter topic based on current trends and the newsletter context.
+    Returns a dict with 'topic' (short title) and 'description' (context for content generation).
+    """
+    context = ""
+    if config:
+        if config.get("description"):
+            context += f"Newsletter: {config['description']}\n"
+        if config.get("audience"):
+            context += f"Audience: {config['audience']}\n"
+        if config.get("themes"):
+            context += f"Themes: {config['themes']}\n"
+
+    if not context:
+        context = "A weekly newsletter for sales and GTM professionals."
+
+    prompt = f"""You are helping generate a topic for a weekly GTM/sales newsletter.
+
+{context}
+
+Generate a fresh, timely topic for this week's newsletter. The topic should be:
+- Relevant to sales, marketing, or go-to-market professionals
+- Specific enough to guide content (not generic like "Sales Tips")
+- Timely - connected to current trends, seasons, or industry developments
+- Engaging - something readers would want to open
+
+Use web search to find what's currently trending or relevant in the GTM/sales space.
+
+Respond with ONLY a JSON object (no markdown, no explanation):
+{{"topic": "Short Topic Title (3-6 words)", "description": "1-2 sentences explaining the angle and why it's relevant now"}}"""
+
+    def make_request():
+        return client.messages.create(
+            model=RESEARCH_MODEL,
+            max_tokens=500,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 2}],
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+    response = call_with_retry(make_request)
+
+    # Extract text from response
+    text_parts = [block.text for block in response.content if hasattr(block, "text")]
+    response_text = "\n".join(text_parts).strip()
+
+    # Parse JSON response
+    import json
+    import re
+
+    # Try to extract JSON from the response
+    json_match = re.search(r'\{[^{}]+\}', response_text)
+    if json_match:
+        try:
+            result = json.loads(json_match.group())
+            if "topic" in result:
+                return result
+        except json.JSONDecodeError:
+            pass
+
+    # Fallback if parsing fails
+    return {
+        "topic": "This Week in GTM",
+        "description": "Weekly roundup of go-to-market insights and trends"
+    }
+
+
 def call_with_retry(func, max_retries=3):
     """Call a function with exponential backoff on rate limit errors."""
     for attempt in range(max_retries):

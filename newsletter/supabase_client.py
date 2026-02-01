@@ -66,6 +66,23 @@ def mark_topic_used(client, topic_id: str):
     ).eq("id", topic_id).execute()
 
 
+def create_topic(client, topic: str, description: str = None, auto_generated: bool = False) -> dict:
+    """
+    Create a new topic in the newsletter_topics table.
+    Returns the created topic record.
+    """
+    data = {
+        "topic": topic,
+        "active": True,
+        "priority": 0,  # Low priority since it's auto-generated
+    }
+    if description:
+        data["description"] = description
+
+    result = client.table("newsletter_topics").insert(data).execute()
+    return result.data[0] if result.data else None
+
+
 def mark_tech_used(client, tech_id: str):
     """Mark a tech item as used."""
     client.table("tech_backlog").update(

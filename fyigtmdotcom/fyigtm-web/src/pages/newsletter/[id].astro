@@ -1,0 +1,156 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSupabaseAdmin } from '../../lib/supabase';
+import { marked } from 'marked';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+
+// Fetch the newsletter from Supabase
+const runtime = (Astro.locals as any).runtime;
+const supabase = getSupabaseAdmin(runtime?.env);
+
+const { data: newsletter, error } = await supabase
+  .from('newsletter_runs')
+  .select('id, run_date, issue_number, newsletter_topics(topic), newsletter_content')
+  .eq('id', id)
+  .eq('status', 'published')
+  .single();
+
+// If newsletter not found, redirect to archive
+if (error || !newsletter) {
+  return Astro.redirect('/newsletter');
+}
+
+// Format the date
+const formattedDate = new Date(newsletter.run_date).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+});
+
+// Build title from issue_number and topic (same logic as API)
+const topicName = newsletter.newsletter_topics?.topic;
+const issueNum = newsletter.issue_number;
+
+let title: string;
+if (issueNum && topicName) {
+  title = `FYI GTM #${issueNum}: ${topicName}`;
+} else if (issueNum) {
+  title = `FYI GTM #${issueNum}: This Week in GTM`;
+} else if (topicName) {
+  title = topicName;
+} else {
+  title = 'Newsletter';
+}
+
+// Render markdown content
+const htmlContent = marked(newsletter.newsletter_content || '');
+---
+
+<BaseLayout title={`${title} | FYI GTM Newsletter`}>
+  <div class="container">
+    <!-- Full Width Layout -->
+    <div class="main-layout">
+      <!-- Back Button -->
+      <a href="/newsletter" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        Back to Newsletter
+      </a>
+      <article class="newsletter-article">
+        <!-- Newsletter Header -->
+        <header class="newsletter-header">
+          <div class="newsletter-meta">
+            <span class="newsletter-date">{formattedDate}</span>
+          </div>
+          <h1 class="newsletter-title">{title}</h1>
+        </header>
+
+        <!-- Newsletter Content -->
+        <div class="newsletter-content prose" set:html={htmlContent} />
+      </article>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+  }
+
+  /* Back Link */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 24px;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--color-primary);
+  }
+
+  /* Full Width Layout (no sidebar) - centered */
+  .main-layout {
+    display: block;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .newsletter-article {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
+    border-radius: 0;
+    padding: 32px;
+  }
+
+  .newsletter-header {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .newsletter-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .newsletter-date {
+    font-size: 14px;
+    color: var(--color-text-muted);
+  }
+
+  .newsletter-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  .newsletter-content {
+    max-width: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .newsletter-article {
+      padding: 20px;
+    }
+
+    .newsletter-title {
+      font-size: 1.5rem;
+    }
+  }
+</style>
