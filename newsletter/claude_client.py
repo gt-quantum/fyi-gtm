@@ -300,7 +300,7 @@ GUIDELINES:
 - Each section should be concise (2-4 sentences for the spotlight, 1-2 sentences per tip/takeaway)
 - Total length: 400-600 words
 - Format in Markdown
-- End with a brief sign-off
+- End with a brief closing line and sign off with exactly: "— FYI GTM Team" (use an em dash)
 
 IMAGES:
 - Include 1-2 relevant images total (not per section), only where they add value
@@ -335,8 +335,9 @@ Write the newsletter now. Start directly with the first section heading (## One:
 
 def clean_newsletter_content(content: str) -> str:
     """
-    Remove any preamble before the first section heading.
-    Safety measure - should rarely be needed with 2-step approach.
+    Clean up newsletter content:
+    1. Remove any preamble before the first section heading
+    2. Ensure sign-off is exactly "— FYI GTM Team"
     """
     import re
 
@@ -348,4 +349,28 @@ def clean_newsletter_content(content: str) -> str:
         if before and not before.startswith('#'):
             content = content[heading_match.start(2):]
 
-    return content.strip()
+    content = content.strip()
+
+    # Ensure correct sign-off
+    # Look for common sign-off patterns and replace with correct one
+    signoff_patterns = [
+        r'—\s*The\s+\w+\s+Team\s*$',
+        r'—\s*\w+\s+Newsletter\s+Team\s*$',
+        r'—\s*The\s+GTM\s+Newsletter\s+Team\s*$',
+        r'—\s*GTM\s+Team\s*$',
+        r'-\s*The\s+\w+\s+Team\s*$',
+        r'-\s*FYI\s+GTM\s+Team\s*$',
+    ]
+
+    correct_signoff = "— FYI GTM Team"
+
+    for pattern in signoff_patterns:
+        if re.search(pattern, content, re.IGNORECASE):
+            content = re.sub(pattern, correct_signoff, content, flags=re.IGNORECASE)
+            break
+
+    # If no sign-off found, add one
+    if not re.search(r'—\s*FYI\s+GTM\s+Team\s*$', content, re.IGNORECASE):
+        content = content.rstrip() + "\n\n— FYI GTM Team"
+
+    return content
