@@ -20,12 +20,12 @@ export const GET: APIRoute = async ({ request, locals }) => {
       .select('*', { count: 'exact', head: true })
       .eq('status', 'published');
 
-    // Get paginated data including issue_number
+    // Get paginated data including issue_number, ordered by issue_number (most recent first)
     const { data, error } = await supabase
       .from('newsletter_runs')
       .select('id, run_date, issue_number, newsletter_topics(topic), newsletter_content')
       .eq('status', 'published')
-      .order('run_date', { ascending: false })
+      .order('issue_number', { ascending: false, nullsFirst: false })
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (error) throw error;
