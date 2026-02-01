@@ -53,30 +53,38 @@ def generate_topic(client, config: dict | None = None) -> dict:
 
 {context}
 
-Generate a fresh, timely topic for this week's newsletter. The topic should be:
-- Relevant to sales, marketing, or go-to-market professionals
-- Specific enough to guide content (not generic like "Sales Tips")
-- Timely - connected to current trends, seasons, or industry developments
-- Engaging - something readers would want to open
+Generate a fresh, timely topic for this week's newsletter.
 
-Use web search to find what's currently trending or relevant in the GTM/sales space.
+REQUIREMENTS:
+- Must be SPECIFIC (e.g., "AI SDRs Transform Outbound" not "Sales Tips")
+- Must be TIMELY - reference something happening NOW in the industry
+- Must be 3-6 words
+- Do NOT use generic phrases like "This Week in GTM", "Weekly Roundup", "Sales Update", etc.
 
-Respond with ONLY a JSON object (no markdown, no explanation):
-{{"topic": "Short Topic Title (3-6 words)", "description": "1-2 sentences explaining the angle and why it's relevant now"}}"""
+Use web search to find what's currently trending in the GTM/sales/revenue space. Look for:
+- New tool launches or funding announcements
+- Industry shifts or emerging trends
+- Seasonal business themes (Q1 planning, EOY pushes, etc.)
+- Hot debates or controversial takes in the space
+
+Respond with ONLY a JSON object (no markdown, no code blocks, no explanation):
+{{"topic": "Specific Topic Title", "description": "1-2 sentences explaining the angle and why it's relevant now"}}"""
 
     def make_request():
         return client.messages.create(
             model=RESEARCH_MODEL,
             max_tokens=500,
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 2}],
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
             messages=[{"role": "user", "content": prompt}],
         )
 
+    print("  Calling Claude to generate topic...")
     response = call_with_retry(make_request)
 
     # Extract text from response
     text_parts = [block.text for block in response.content if hasattr(block, "text")]
     response_text = "\n".join(text_parts).strip()
+    print(f"  Raw response: {response_text[:200]}...")
 
     # Parse JSON response
     import json
@@ -88,15 +96,28 @@ Respond with ONLY a JSON object (no markdown, no explanation):
         try:
             result = json.loads(json_match.group())
             if "topic" in result:
-                return result
-        except json.JSONDecodeError:
-            pass
+                # Reject generic topics
+                generic_phrases = ["this week in", "weekly roundup", "sales update", "gtm update", "weekly digest"]
+                if any(phrase in result["topic"].lower() for phrase in generic_phrases):
+                    print(f"  Rejected generic topic: {result['topic']}")
+                else:
+                    print(f"  Generated topic: {result['topic']}")
+                    return result
+        except json.JSONDecodeError as e:
+            print(f"  JSON parse error: {e}")
 
-    # Fallback if parsing fails
-    return {
-        "topic": "This Week in GTM",
-        "description": "Weekly roundup of go-to-market insights and trends"
+    # Fallback - try to generate something based on current month/quarter
+    from datetime import datetime
+    now = datetime.now()
+    month = now.strftime("%B")
+    quarter = f"Q{(now.month - 1) // 3 + 1}"
+
+    fallback = {
+        "topic": f"{quarter} Pipeline Strategies",
+        "description": f"Tactical approaches to building and accelerating pipeline in {month}."
     }
+    print(f"  Using fallback topic: {fallback['topic']}")
+    return fallback
 
 
 def call_with_retry(func, max_retries=3):
