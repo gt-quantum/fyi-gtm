@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 export default function Sidebar({ tools, categories = [] }) {
   const featuredTools = tools.filter(t => t.featured).slice(0, 3);
   const recentlyAdded = [...tools]
-    .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
     .slice(0, 3);
 
   return (

@@ -19,7 +19,7 @@ pricing: "freemium"
 priceNote: "Free tier available with limited integrations, paid plans for advanced features"
 
 # Meta
-featured: false
+featured: true
 publishedAt: 2026-01-30
 isNew: true
 hasDeal: false
