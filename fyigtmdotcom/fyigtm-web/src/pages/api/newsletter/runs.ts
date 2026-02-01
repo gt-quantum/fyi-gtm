@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '../../../lib/supabase';
 
 export const prerender = false;
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export const GET: APIRoute = async ({ request, locals }) => {
   try {
