@@ -1,239 +1,191 @@
 ---
-import { getCollection } from 'astro:content';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import FilterableToolsList from '../components/tools/FilterableToolsList.jsx';
-import Sidebar from '../components/tools/Sidebar.jsx';
-
-const toolsEntries = await getCollection('tools');
-
-const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }));
+import LandingLayout from '../layouts/LandingLayout.astro';
 ---
 
-<BaseLayout title="GTM Tools Directory | FYI GTM">
-  <div class="container">
-    <!-- Hero Section -->
-    <section class="hero">
-      <h1 class="hero-title">Go-to-market tools directory</h1>
-      <p class="hero-subtitle">
-        Discover {toolsData.length}+ tools and resources to accelerate your GTM strategy.
-      </p>
-    </section>
-
-    <!-- Search Bar -->
-    <div class="search-wrapper">
-      <div class="search-container">
-        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.35-4.35" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search GTM tools..."
-          class="search-input"
-          id="search-input"
-        />
-        <kbd class="search-kbd">K</kbd>
-      </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-layout">
-      <!-- Filterable Tools List with Group/Category Filter -->
-      <FilterableToolsList client:load tools={toolsData} defaultSort="newest" />
-
-      <!-- Sidebar -->
-      <div class="sidebar-wrapper">
-        <Sidebar client:load tools={toolsData} title="DEALS" />
-      </div>
-    </div>
-
-    <!-- Newsletter CTA -->
-    <section class="newsletter-section">
-      <div class="newsletter-content">
-        <h2 class="newsletter-title">Stay ahead of the curve</h2>
-        <p class="newsletter-text">
-          Get the latest GTM tools and strategies delivered to your inbox weekly.
+<LandingLayout title="FYI GTM | Go-to-Market Intelligence">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-container">
+      <div class="hero-content">
+        <h1 class="hero-title">Go-to-market intelligence</h1>
+        <p class="hero-description">
+          Curated tools, weekly analysis, and insights to help GTM teams grow faster.
         </p>
-        <form class="newsletter-form" id="newsletter-form">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            class="newsletter-input"
-            id="newsletter-email"
-            required
-          />
-          <button type="submit" class="newsletter-button" id="newsletter-submit">
-            Subscribe
-          </button>
+
+        <!-- Newsletter Subscribe -->
+        <form class="hero-form" id="newsletter-form">
+          <div class="form-row">
+            <input
+              type="email"
+              placeholder="Enter your email"
+              class="hero-input"
+              id="newsletter-email"
+              required
+            />
+            <button type="submit" class="hero-button" id="newsletter-submit">
+              Subscribe
+            </button>
+          </div>
+          <p class="newsletter-status" id="newsletter-status"></p>
         </form>
-        <p class="newsletter-status" id="newsletter-status"></p>
+        <p class="hero-note">Weekly insights delivered to your inbox.</p>
       </div>
-    </section>
-  </div>
-</BaseLayout>
+
+      <div class="hero-mascot">
+        <img src="/logo.png" alt="FYI GTM Mascot" class="mascot-image" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Explore Section -->
+  <section class="explore">
+    <div class="explore-container">
+      <div class="cards-grid">
+        <!-- Directory Card -->
+        <a href="/directory" class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+          </div>
+          <h3 class="card-title">GTM Tools Directory</h3>
+          <p class="card-description">
+            Browse 200+ curated tools across sales, marketing, operations, and analytics.
+          </p>
+          <span class="card-link">
+            Browse tools
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </span>
+        </a>
+
+        <!-- Newsletter Card -->
+        <a href="/newsletter" class="card">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="M22 7l-10 6L2 7" />
+            </svg>
+          </div>
+          <h3 class="card-title">Weekly Newsletter</h3>
+          <p class="card-description">
+            Trends, new tools, and tactical insights from the best GTM operators.
+          </p>
+          <span class="card-link">
+            Read archives
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+</LandingLayout>
 
 <style>
-  .container {
-    max-width: var(--container-max-width);
-    margin: 0 auto;
-    padding: 0 var(--content-padding);
+  /* ===== HERO SECTION ===== */
+  .hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px var(--content-padding) 0;
   }
 
-  /* Hero */
-  .hero {
-    text-align: center;
-    padding: 32px 0 24px;
+  .hero-container {
+    max-width: 900px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .hero-content {
+    max-width: 520px;
+  }
+
+  .hero-mascot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mascot-image {
+    max-width: 320px;
+    width: 100%;
+    height: auto;
   }
 
   .hero-title {
     font-size: 2.5rem;
     font-weight: 600;
-    margin: 0 0 8px;
-    color: var(--color-text);
+    line-height: 1.15;
     letter-spacing: -0.03em;
-  }
-
-  .hero-subtitle {
-    font-size: 1rem;
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  /* Search */
-  .search-wrapper {
-    margin-bottom: 24px;
-  }
-
-  .search-container {
-    position: relative;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-
-  .search-icon {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    color: var(--color-text-muted);
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 14px 60px 14px 48px;
-    background: var(--color-background-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    font-size: 15px;
     color: var(--color-text);
-    outline: none;
-    transition: all 0.2s;
+    margin: 0 0 16px;
   }
 
-  .search-input::placeholder {
-    color: var(--color-text-muted);
-  }
-
-  .search-input:focus {
-    border-color: var(--color-text);
-    background: var(--color-background-tertiary);
-  }
-
-  .search-kbd {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    padding: 4px 8px;
-    background: var(--color-background-tertiary);
-    border: 1px solid var(--color-border);
-    font-size: 12px;
-    color: var(--color-text-muted);
-    font-family: inherit;
-  }
-
-  /* Main Layout */
-  .main-layout {
-    display: grid;
-    grid-template-columns: 1fr var(--sidebar-width);
-    gap: 32px;
-    align-items: start;
-  }
-
-  .sidebar-wrapper {
-  }
-
-  /* Newsletter */
-  .newsletter-section {
-    background: var(--color-background-secondary);
-    border: 1px solid var(--color-border);
-    padding: 48px;
-    margin-top: 64px;
-    text-align: center;
-    transition: border-color 0.2s ease;
-  }
-
-  .newsletter-section:hover {
-    border-color: var(--color-border-hover);
-  }
-
-  .newsletter-content {
-    max-width: 480px;
-    margin: 0 auto;
-  }
-
-  .newsletter-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0 0 8px;
-    color: var(--color-text);
-  }
-
-  .newsletter-text {
-    font-size: 1rem;
+  .hero-description {
+    font-size: 1.125rem;
+    line-height: 1.6;
     color: var(--color-text-muted);
     margin: 0 0 24px;
   }
 
-  .newsletter-form {
+  .hero-form {
+    max-width: 440px;
+    margin: 0 0 12px;
+  }
+
+  .form-row {
     display: flex;
     gap: 0;
   }
 
-  .newsletter-input {
+  .hero-input {
     flex: 1;
-    padding: 12px 16px;
+    padding: 14px 16px;
     border: 1px solid var(--color-border);
-    background-color: var(--color-background);
+    background-color: var(--color-background-secondary);
     color: var(--color-text);
-    font-size: 1rem;
+    font-size: 15px;
     outline: none;
     transition: border-color 0.2s ease;
+    border-radius: 8px 0 0 8px;
   }
 
-  .newsletter-input:focus {
+  .hero-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .hero-input:focus {
     border-color: var(--color-text);
+    background: var(--color-background-tertiary);
   }
 
-  .newsletter-button {
-    padding: 12px 24px;
+  .hero-button {
+    padding: 14px 24px;
     background-color: var(--color-text);
     color: var(--color-background);
     border: 1px solid var(--color-text);
-    font-size: 1rem;
+    font-size: 15px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
+    border-radius: 0 8px 8px 0;
   }
 
-  .newsletter-button:hover {
+  .hero-button:hover {
     background-color: transparent;
     color: var(--color-text);
   }
 
-  .newsletter-button:disabled {
+  .hero-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -242,6 +194,7 @@ const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }
     margin-top: 12px;
     font-size: 0.875rem;
     min-height: 1.25em;
+    text-align: center;
   }
 
   .newsletter-status.success {
@@ -252,29 +205,165 @@ const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }
     color: #EF4444;
   }
 
-  /* Responsive */
+  .hero-note {
+    font-size: 13px;
+    color: var(--color-text-light);
+    margin: 0;
+  }
+
+  /* ===== EXPLORE SECTION ===== */
+  .explore {
+    padding: 0 var(--content-padding) 100px;
+    margin-top: 8px;
+  }
+
+  .explore-container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    background: var(--color-background-secondary);
+    border: 1px solid var(--color-border);
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .card:hover {
+    border-color: var(--color-border-hover);
+  }
+
+  .card-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .card-icon svg {
+    width: 28px;
+    height: 28px;
+    color: var(--color-text);
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .card-description {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+    margin: 0 0 16px;
+    flex: 1;
+  }
+
+  .card-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .card-link svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s ease;
+  }
+
+  .card:hover .card-link svg {
+    transform: translateX(4px);
+  }
+
+  /* ===== RESPONSIVE ===== */
   @media (max-width: 968px) {
-    .main-layout {
+    .hero-container {
       grid-template-columns: 1fr;
+      gap: 24px;
+      text-align: center;
     }
 
-    .sidebar-wrapper {
-      margin-top: 32px;
+    .hero-content {
+      max-width: 600px;
+      margin: 0 auto;
+      order: 2;
+    }
+
+    .hero-mascot {
+      order: 1;
+    }
+
+    .mascot-image {
+      max-width: 180px;
+    }
+
+    .hero-form {
+      margin: 0 auto 12px;
     }
   }
 
   @media (max-width: 768px) {
+    .hero {
+      padding: 32px var(--content-padding) 32px;
+    }
+
+    .hero-container {
+      gap: 20px;
+    }
+
+    .mascot-image {
+      max-width: 140px;
+    }
+
     .hero-title {
       font-size: 1.75rem;
     }
 
-    .newsletter-section {
-      padding: 32px 24px;
+    .hero-description {
+      font-size: 1rem;
+      margin-bottom: 20px;
     }
 
-    .newsletter-form {
+    .form-row {
       flex-direction: column;
       gap: 12px;
+    }
+
+    .hero-input {
+      border-radius: 8px;
+    }
+
+    .hero-button {
+      border-radius: 8px;
+    }
+
+    .explore {
+      padding: 0 var(--content-padding) 48px;
+    }
+
+    .cards-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .card {
+      padding: 20px;
     }
   }
 </style>
@@ -291,7 +380,6 @@ const toolsData = toolsEntries.map(entry => ({ ...entry.data, slug: entry.slug }
     const email = emailInput?.value?.trim();
     if (!email) return;
 
-    // Update UI for loading state
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Subscribing...';

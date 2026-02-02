@@ -3,23 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../hooks/useTheme';
 
 const navItems = [
-  { label: 'All', href: '/directory' },
-  { label: 'New', href: '/new' },
-  { label: 'Featured', href: '/featured' },
-  { label: 'Top', href: '/top' },
-  { label: 'Categories', href: '/categories' },
+  { label: 'Directory', href: '/directory' },
+  { label: 'Newsletter', href: '/newsletter' },
 ];
 
-const Header = () => {
-  const [currentPath, setCurrentPath] = useState('/');
+const LandingHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [hoveredItem, setHoveredItem] = useState(null);
   const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
-    setCurrentPath(window.location.pathname);
     document.addEventListener('astro:after-swap', () => {
-      setCurrentPath(window.location.pathname);
       setMobileMenuOpen(false);
     });
   }, []);
@@ -41,36 +34,20 @@ const Header = () => {
           </a>
 
           {/* Desktop Nav */}
-          <nav style={styles.nav} className="header-nav">
+          <nav style={styles.nav} className="landing-nav">
             {navItems.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                style={{
-                  ...styles.navLink,
-                  color: currentPath === item.href
-                    ? 'var(--color-text)'
-                    : 'var(--color-text-muted)',
-                  fontWeight: currentPath === item.href ? 600 : 400,
-                }}
+                style={styles.navLink}
                 onMouseEnter={(e) => {
-                  setHoveredItem(item.href);
                   e.target.style.color = 'var(--color-text)';
                 }}
                 onMouseLeave={(e) => {
-                  setHoveredItem(null);
-                  e.target.style.color = currentPath === item.href
-                    ? 'var(--color-text)'
-                    : 'var(--color-text-muted)';
+                  e.target.style.color = 'var(--color-text-muted)';
                 }}
               >
                 {item.label}
-                <span style={{
-                  ...styles.navUnderline,
-                  transform: (currentPath === item.href || hoveredItem === item.href)
-                    ? 'scaleX(1)'
-                    : 'scaleX(0)',
-                }} />
               </a>
             ))}
           </nav>
@@ -99,46 +76,10 @@ const Header = () => {
                 </svg>
               )}
             </button>
-            <a
-              href="/newsletter"
-              style={styles.newsletterBtn}
-              className="header-newsletter"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                e.currentTarget.style.color = 'var(--color-background)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                e.currentTarget.style.color = 'var(--color-primary)';
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 16, height: 16, marginRight: 6 }}>
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <path d="M22 6l-10 7L2 6" />
-              </svg>
-              <span style={styles.submitText}>Newsletter</span>
-            </a>
-            <a
-              href="/submit"
-              style={styles.submitBtn}
-              className="header-submit"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = 'var(--color-text)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--color-text)';
-                e.currentTarget.style.color = 'var(--color-background)';
-              }}
-            >
-              <span style={styles.submitText}>Submit</span>
-            </a>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               style={styles.menuButton}
-              className="header-menu-btn"
+              className="landing-menu-btn"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 24, height: 24 }}>
                 {mobileMenuOpen ? (
@@ -166,25 +107,25 @@ const Header = () => {
               <a
                 key={item.href}
                 href={item.href}
-                style={{
-                  ...styles.mobileNavLink,
-                  color: currentPath === item.href
-                    ? 'var(--color-text)'
-                    : 'var(--color-text-muted)',
-                }}
+                style={styles.mobileNavLink}
               >
                 {item.label}
               </a>
             ))}
-            <a href="/newsletter" style={styles.mobileNewsletterBtn}>
-              Newsletter
-            </a>
-            <a href="/submit" style={styles.mobileSubmitBtn}>
-              Submit Tool
-            </a>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .landing-nav {
+            display: none !important;
+          }
+          .landing-menu-btn {
+            display: flex !important;
+          }
+        }
+      `}</style>
     </>
   );
 };
@@ -224,27 +165,15 @@ const styles = {
   nav: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    flex: 1,
-    justifyContent: 'center',
+    gap: '32px',
   },
   navLink: {
-    position: 'relative',
-    padding: '8px 14px',
     fontSize: '14px',
+    fontWeight: 500,
     textDecoration: 'none',
+    color: 'var(--color-text-muted)',
     transition: 'color 0.2s ease',
-    whiteSpace: 'nowrap',
-  },
-  navUnderline: {
-    position: 'absolute',
-    bottom: '4px',
-    left: '14px',
-    right: '14px',
-    height: '1px',
-    backgroundColor: 'var(--color-text)',
-    transformOrigin: 'left',
-    transition: 'transform 0.3s ease',
+    letterSpacing: '0.02em',
   },
   actions: {
     display: 'flex',
@@ -261,36 +190,6 @@ const styles = {
     justifyContent: 'center',
     color: 'var(--color-text-muted)',
     transition: 'color 0.2s ease',
-  },
-  newsletterBtn: {
-    padding: '8px 14px',
-    backgroundColor: 'transparent',
-    color: 'var(--color-primary)',
-    border: '1px solid var(--color-primary)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textDecoration: 'none',
-    transition: 'all 0.2s ease',
-    fontSize: '14px',
-    fontWeight: 500,
-    borderRadius: '4px',
-  },
-  submitBtn: {
-    padding: '8px 16px',
-    backgroundColor: 'var(--color-text)',
-    color: 'var(--color-background)',
-    border: '1px solid var(--color-text)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textDecoration: 'none',
-    transition: 'all 0.2s ease',
-    fontSize: '14px',
-    fontWeight: 500,
-  },
-  submitText: {
-    lineHeight: 1,
   },
   menuButton: {
     display: 'none',
@@ -316,35 +215,12 @@ const styles = {
   mobileNavLink: {
     padding: '16px 0',
     fontSize: '16px',
+    fontWeight: 500,
     textDecoration: 'none',
+    color: 'var(--color-text-muted)',
     borderBottom: '1px solid var(--color-border)',
     transition: 'color 0.2s ease',
   },
-  mobileNewsletterBtn: {
-    marginTop: '16px',
-    padding: '14px 16px',
-    backgroundColor: 'transparent',
-    color: 'var(--color-primary)',
-    fontSize: '16px',
-    fontWeight: 500,
-    textDecoration: 'none',
-    textAlign: 'center',
-    border: '1px solid var(--color-primary)',
-    borderRadius: '4px',
-    transition: 'all 0.2s ease',
-  },
-  mobileSubmitBtn: {
-    marginTop: '12px',
-    padding: '14px 16px',
-    backgroundColor: 'var(--color-text)',
-    color: 'var(--color-background)',
-    fontSize: '16px',
-    fontWeight: 500,
-    textDecoration: 'none',
-    textAlign: 'center',
-    border: '1px solid var(--color-text)',
-    transition: 'all 0.2s ease',
-  },
 };
 
-export default Header;
+export default LandingHeader;
