@@ -2,12 +2,17 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GroupCategoryFilter, { GROUPS, CATEGORIES } from './GroupCategoryFilter';
 import ToolListItem from './ToolListItem';
+import { useUpvoteCounts } from '../../hooks/useUpvote';
 
 export default function FilterableToolsList({ tools, defaultSort = 'newest' }) {
   const [activeGroup, setActiveGroup] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [sortBy, setSortBy] = useState(defaultSort);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch real upvote counts from Supabase
+  const slugs = useMemo(() => tools.map(t => t.slug), [tools]);
+  const { counts: upvoteCounts } = useUpvoteCounts(slugs);
 
   // Listen for search input from the page
   useEffect(() => {
@@ -27,7 +32,11 @@ export default function FilterableToolsList({ tools, defaultSort = 'newest' }) {
 
   // Filter and sort tools
   const filteredTools = useMemo(() => {
-    let result = [...tools];
+    // Merge real upvote counts into tools
+    let result = tools.map(tool => ({
+      ...tool,
+      upvotes: upvoteCounts[tool.slug] ?? tool.upvotes ?? 0
+    }));
 
     // Filter by search query
     if (searchQuery) {
@@ -77,7 +86,7 @@ export default function FilterableToolsList({ tools, defaultSort = 'newest' }) {
     }
 
     return result;
-  }, [tools, activeGroup, activeCategory, sortBy, searchQuery]);
+  }, [tools, activeGroup, activeCategory, sortBy, searchQuery, upvoteCounts]);
 
   // Get current filter label for display
   const filterLabel = useMemo(() => {

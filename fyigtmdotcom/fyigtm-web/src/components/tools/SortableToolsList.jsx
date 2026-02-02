@@ -1,9 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ToolListItem from './ToolListItem';
+import { useUpvoteCounts } from '../../hooks/useUpvote';
 
 export default function SortableToolsList({ tools: initialTools, defaultSort = 'upvotes' }) {
   const [activeSort, setActiveSort] = useState(defaultSort);
   const [tools, setTools] = useState(initialTools);
+
+  // Fetch real upvote counts from Supabase
+  const slugs = useMemo(() => initialTools.map(t => t.slug), [initialTools]);
+  const { counts: upvoteCounts, isLoading: countsLoading } = useUpvoteCounts(slugs);
+
+  // Merge real upvote counts into tools
+  const toolsWithCounts = useMemo(() => {
+    return initialTools.map(tool => ({
+      ...tool,
+      upvotes: upvoteCounts[tool.slug] ?? tool.upvotes ?? 0
+    }));
+  }, [initialTools, upvoteCounts]);
 
   useEffect(() => {
     // Check URL for sort param on mount
@@ -11,17 +24,17 @@ export default function SortableToolsList({ tools: initialTools, defaultSort = '
     const sortParam = params.get('sort');
     if (sortParam && ['upvotes', 'alphabetical', 'newest'].includes(sortParam)) {
       setActiveSort(sortParam);
-      sortTools(sortParam, initialTools);
+      sortTools(sortParam, toolsWithCounts);
     } else {
-      sortTools(defaultSort, initialTools);
+      sortTools(defaultSort, toolsWithCounts);
     }
-  }, []);
+  }, [toolsWithCounts]);
 
   const sortTools = (sortType, toolsToSort) => {
     let sorted;
     switch (sortType) {
       case 'upvotes':
-        sorted = [...toolsToSort].sort((a, b) => b.upvotes - a.upvotes);
+        sorted = [...toolsToSort].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
         break;
       case 'alphabetical':
         sorted = [...toolsToSort].sort((a, b) => a.name.localeCompare(b.name));
@@ -43,7 +56,7 @@ export default function SortableToolsList({ tools: initialTools, defaultSort = '
     url.searchParams.set('sort', sortType);
     window.history.replaceState({}, '', url);
 
-    sortTools(sortType, initialTools);
+    sortTools(sortType, toolsWithCounts);
   };
 
   return (
