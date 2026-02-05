@@ -310,21 +310,11 @@ def run_writing_step(
     Step 2: Use Sonnet (NO tools) to write the final newsletter.
     No web search = no tool-use commentary = clean output.
     """
-    # Build the tool image instruction
-    tech_domain = _extract_tech_domain(tech)
-    if tech_domain:
-        image_instructions = f"""TOOL IMAGE:
-- In the Spotlight section, include the tool's logo inline using: ![{tech.get('name', 'Tool')} logo](https://logo.clearbit.com/{tech_domain}?size=80)
-- Place the logo near the top of the Spotlight section, right after the heading.
-- If you want an additional image elsewhere in the newsletter for visual variety, you may use one Unsplash image: ![alt text](https://images.unsplash.com/photo-IMAGE_ID?w=600&h=400&fit=crop)
-- Do not use more than 2 images total."""
-    else:
-        image_instructions = """IMAGES:
-- Include 1 relevant image, only where it adds value
-- Use Unsplash images with this markdown format: ![alt text](https://images.unsplash.com/photo-IMAGE_ID?w=600&h=400&fit=crop)
-- Choose an image specific to the tool or topic being discussed, not generic stock photos
-- Place the image in the Spotlight section after the heading
-- Do not use more than 2 images total."""
+    # Images disabled - Unsplash IDs are unreliable and Clearbit logos
+    # were not being used by the model. Can re-enable later with a
+    # reliable image source.
+    image_instructions = """IMAGES:
+- Do NOT include any images in the newsletter. No Unsplash, no logos, no markdown image tags."""
 
     # Build the avoid section block
     avoid_block = f"\n\n{avoid_section}" if avoid_section else ""
