@@ -18,6 +18,7 @@ Include: what it does, why it matters now, and a practical use case.
 Two actionable sales tips.
 - If TIPS TO INCLUDE were provided above, expand on those with practical context.
 - If no tips were provided, generate two relevant tips based on the newsletter context and current trends.
+- Tips must be distinct from generic advice like "audit your pipeline" or "clean your CRM." Each tip should reference a specific tactic, framework, or behavior change tied to the current topic.
 Keep each tip specific and immediately actionable.
 
 ## Three: Takeaways
@@ -231,6 +232,7 @@ def generate_newsletter(
     topic: dict | None = None,
     tech: dict | None = None,
     tips: list = None,
+    recent_tech: list[str] = None,
 ) -> str:
     """
     Generate a newsletter using a 2-step pipeline:
@@ -246,7 +248,7 @@ def generate_newsletter(
 
     # ========== STEP 1: RESEARCH WITH HAIKU ==========
     print("  Step 1: Researching with Haiku...")
-    research_notes = run_research_step(client, context_section, backlog_section)
+    research_notes = run_research_step(client, context_section, backlog_section, recent_tech)
     print("  Research complete.")
 
     # ========== STEP 2: WRITING WITH SONNET ==========
@@ -264,18 +266,36 @@ def run_research_step(
     client,
     context_section: str,
     backlog_section: str,
+    recent_tech: list[str] = None,
 ) -> str:
     """
     Step 1: Use Haiku with web search to gather current information.
     Returns research notes to be used by the writing step.
     """
+    # Build avoidance context from recently featured tools
+    tech_avoidance = ""
+    if recent_tech:
+        tech_list = "\n".join(f"  - {t}" for t in recent_tech)
+        tech_avoidance = f"""
+PREVIOUSLY FEATURED TOOLS (do NOT repeat or closely resemble any of these):
+{tech_list}
+
+Your tech spotlight must feature a DIFFERENT tool than those listed above. If recent
+spotlights cluster on one category (e.g., conversation intelligence, sequencing),
+deliberately choose a tool from a different GTM category such as: CRM platforms,
+sales engagement, pipeline analytics, forecasting tools, proposal/CPQ software,
+territory management, buyer intent platforms, competitive intelligence, onboarding
+tools, customer success platforms, RevOps infrastructure, or data enrichment.
+Do NOT default to any single tool or category.
+
+"""
+
     prompt = f"""You are a research assistant gathering information for a weekly newsletter.
 
 {context_section}
 
 {backlog_section}
-
-YOUR TASK:
+{tech_avoidance}YOUR TASK:
 1. Use web search to find current, relevant information:
    - If a TECH TO SPOTLIGHT was provided, search for recent news, updates, or reviews about it
    - If no tech was provided, search for a specific, named trending sales/GTM tool this week
@@ -290,7 +310,7 @@ YOUR TASK:
 
 3. Output a structured research summary with:
    - Tech tool information (name, what it does, why it's relevant now, pricing if found)
-   - The tool's primary website URL and domain (e.g., https://gong.io, https://apollo.io)
+   - The tool's primary website URL and domain
    - 2-3 current statistics or trends relevant to sales/GTM with sources
    - Any notable news or developments in the space
    - Specific facts, quotes, or data points to include

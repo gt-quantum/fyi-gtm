@@ -74,12 +74,14 @@ def run():
         print("Generating newsletter...")
         db.update_run(supabase, run_id, status="writing")
 
+        recent_tech = db.get_recent_tech_names(supabase, limit=8)
         newsletter_content = claude.generate_newsletter(
             anthropic,
             config=newsletter_config,
             topic=topic,
             tech=tech,
             tips=tips,
+            recent_tech=recent_tech,
         )
         db.update_run(supabase, run_id, newsletter_content=newsletter_content)
         print("Newsletter generated.")

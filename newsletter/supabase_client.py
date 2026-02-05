@@ -80,6 +80,19 @@ def get_recent_topic_names(client, limit: int = 8) -> list[str]:
     return [row["topic"] for row in result.data] if result.data else []
 
 
+def get_recent_tech_names(client, limit: int = 8) -> list[str]:
+    """Fetch the most recently featured tech names for avoidance context."""
+    result = (
+        client.table("tech_backlog")
+        .select("name")
+        .not_.is_("used_at", "null")
+        .order("used_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return [row["name"] for row in result.data] if result.data else []
+
+
 def create_topic(client, topic: str, description: str = None, auto_generated: bool = False) -> dict:
     """
     Create a new topic in the newsletter_topics table.
