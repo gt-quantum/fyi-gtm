@@ -81,7 +81,6 @@ def create_draft_broadcast(subject: str, content: str, description: str = None, 
         "published_at": datetime.now(timezone.utc).isoformat(),
         "send_at": send_at,
         "preview_text": preview_text,
-        "subscriber_filter": [],
     }
 
     response = requests.post(url, json=payload, headers=headers, timeout=30)
