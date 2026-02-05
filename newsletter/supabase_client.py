@@ -110,6 +110,29 @@ def create_topic(client, topic: str, description: str = None, auto_generated: bo
     return result.data[0] if result.data else None
 
 
+def record_featured_tech(client, name: str):
+    """Record a tool that was featured in a newsletter so future runs can avoid it."""
+    now = datetime.now(timezone.utc).isoformat()
+    # Check if this tool already exists in the backlog
+    existing = (
+        client.table("tech_backlog")
+        .select("id")
+        .eq("name", name)
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        # Update existing entry's used_at
+        client.table("tech_backlog").update(
+            {"used_at": now}
+        ).eq("id", existing.data[0]["id"]).execute()
+    else:
+        # Insert new entry as already used
+        client.table("tech_backlog").insert(
+            {"name": name, "used_at": now}
+        ).execute()
+
+
 def mark_tech_used(client, tech_id: str):
     """Mark a tech item as used."""
     client.table("tech_backlog").update(

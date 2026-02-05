@@ -86,6 +86,12 @@ def run():
         db.update_run(supabase, run_id, newsletter_content=newsletter_content)
         print("Newsletter generated.")
 
+        # Record which tool was actually featured (for avoidance in future runs)
+        featured_tech = claude.extract_featured_tech(newsletter_content)
+        if featured_tech:
+            db.record_featured_tech(supabase, featured_tech)
+            print(f"  Recorded featured tech: {featured_tech}")
+
         # Step 5: Mark backlog items as used
         if topic:
             db.mark_topic_used(supabase, topic["id"])

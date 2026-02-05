@@ -23,7 +23,7 @@ Feature ONE sales technology.
   Then begin the sub-label paragraphs below it. Use the actual tool name selected through research, not a placeholder.
 - Use the sub-labels **The problem**, **What it is**, **Key capabilities**, **Why now**, and **Best for** as bold inline labels separated from their content by a normal dash and not a colon.
 - Most sub-sections are short paragraphs (one to two sentences).
-- **Key capabilities** is the exception to the dash and the short paragraph — use three to four short bullet points here. Each bullet is one line covering a capability and its relevance.
+- **Key capabilities** is the exception to the dash and the short paragraph — use three to four short bullet points in markdown list format. Each bullet must start on its own line with a dash and space (- ). Do not use inline bullet characters like •.
 - Do not use bullet points anywhere else in the Spotlight.
 - If there is no relevant research content, do not make things up just to fill the sub-labels. Make sure we cover enough to make it practical and informative.
 
@@ -467,3 +467,15 @@ def clean_newsletter_content(content: str) -> str:
         content = content.rstrip() + "\n\n-- FYI GTM Team"
 
     return content
+
+
+def extract_featured_tech(content: str) -> str | None:
+    """Extract the featured tool name from the Spotlight section."""
+    import re
+    # Find the first bold text after the Spotlight heading
+    spotlight = re.search(r'## One.*?\n\*\*(.+?)\*\*', content, re.DOTALL)
+    if spotlight:
+        # Return just the company/product name (before any colon if present)
+        name = spotlight.group(1).split(':')[0].strip()
+        return name
+    return None
