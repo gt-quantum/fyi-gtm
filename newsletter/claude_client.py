@@ -56,7 +56,7 @@ def generate_topic(client, config: dict | None = None) -> dict:
 Generate a fresh, timely topic for this week's newsletter.
 
 REQUIREMENTS:
-- Must be SPECIFIC (e.g., "AI SDRs Transform Outbound" not "Sales Tips")
+- Must be SPECIFIC: Name a concrete GTM challenge, trend, or shift tied to a particular stage, function, or motion. Avoid broad category labels like "Sales Tips" or "Marketing Trends." The topic should be narrow enough that a reader knows exactly what the issue will cover before opening it.
 - Must be TIMELY - reference something happening NOW in the industry
 - Must be 3-6 words
 - Do NOT use generic phrases like "This Week in GTM", "Weekly Roundup", "Sales Update", etc.
