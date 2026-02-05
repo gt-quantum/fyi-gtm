@@ -1,5 +1,5 @@
 from supabase import create_client
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from .config import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
@@ -64,6 +64,20 @@ def mark_topic_used(client, topic_id: str):
     client.table("newsletter_topics").update(
         {"used_at": datetime.now(timezone.utc).isoformat()}
     ).eq("id", topic_id).execute()
+
+
+def get_recent_topic_names(client, limit: int = 8) -> list[str]:
+    """Fetch the most recently used topic names for avoidance context."""
+    result = (
+        client.table("newsletter_topics")
+        .select("topic")
+        .eq("active", True)
+        .not_.is_("used_at", "null")
+        .order("used_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return [row["topic"] for row in result.data] if result.data else []
 
 
 def create_topic(client, topic: str, description: str = None, auto_generated: bool = False) -> dict:

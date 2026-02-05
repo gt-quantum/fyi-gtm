@@ -32,7 +32,7 @@ def get_client():
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
-def generate_topic(client, config: dict | None = None) -> dict:
+def generate_topic(client, config: dict | None = None, recent_topics: list[str] = None) -> dict:
     """
     Generate a newsletter topic based on current trends and the newsletter context.
     Returns a dict with 'topic' (short title) and 'description' (context for content generation).
@@ -49,11 +49,28 @@ def generate_topic(client, config: dict | None = None) -> dict:
     if not context:
         context = "A weekly newsletter for sales and GTM professionals."
 
+    # Build avoidance context from recently covered topics
+    avoidance = ""
+    if recent_topics:
+        topic_list = "\n".join(f"  - {t}" for t in recent_topics)
+        avoidance = f"""
+PREVIOUSLY COVERED TOPICS (do NOT repeat or closely resemble any of these):
+{topic_list}
+
+Your topic must cover a DIFFERENT area of GTM than the topics above. If recent topics
+cluster on one area (e.g., AI, outbound, prospecting), deliberately choose a different
+GTM domain such as: pipeline management, forecasting accuracy, buyer behavior shifts,
+sales process design, marketing-sales alignment, pricing strategy, competitive positioning,
+enablement programs, new hire onboarding, customer retention, expansion revenue, channel
+partnerships, deal execution, territory planning, or RevOps tooling.
+Do NOT default to AI or any single recurring theme.
+
+"""
+
     prompt = f"""You are helping generate a topic for a weekly GTM/sales newsletter.
 
 {context}
-
-Generate a fresh, timely topic for this week's newsletter.
+{avoidance}Generate a fresh, timely topic for this week's newsletter.
 
 REQUIREMENTS:
 - Must be SPECIFIC: Name a concrete GTM challenge, trend, or shift tied to a particular stage, function, or motion. Avoid broad category labels like "Sales Tips" or "Marketing Trends." The topic should be narrow enough that a reader knows exactly what the issue will cover before opening it.

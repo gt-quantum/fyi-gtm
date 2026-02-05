@@ -49,7 +49,8 @@ def run():
     # If no topic available, generate one
     if not topic:
         print("  No topic in backlog, generating one...")
-        generated = claude.generate_topic(anthropic, newsletter_config)
+        recent_topics = db.get_recent_topic_names(supabase, limit=8)
+        generated = claude.generate_topic(anthropic, newsletter_config, recent_topics)
         topic = db.create_topic(
             supabase,
             topic=generated["topic"],
