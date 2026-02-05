@@ -1,9 +1,10 @@
 name: Weekly Newsletter
 
 on:
-  # Run every Thursday at 9:00 AM ET (14:00 UTC)
+  # Run every Thursday at ~9:00 AM ET (14:17 UTC)
+  # Offset from :00 to avoid GitHub Actions scheduler congestion
   schedule:
-    - cron: '0 14 * * 4'
+    - cron: '17 14 * * 4'
 
   # Allow manual trigger
   workflow_dispatch:
