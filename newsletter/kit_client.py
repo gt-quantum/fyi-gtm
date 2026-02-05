@@ -41,7 +41,10 @@ def extract_preview_text(content: str, max_length: int = 100) -> str:
         if not line or line.startswith("#") or line.startswith("!") or line.startswith("---"):
             continue
         # Found a content line - clean it up and truncate
+        import re
         preview = line.replace("**", "").replace("*", "")
+        # Strip markdown links: [text](url) → text
+        preview = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', preview)
         if len(preview) > max_length:
             preview = preview[:max_length-3].rsplit(" ", 1)[0] + "..."
         return preview
