@@ -235,11 +235,7 @@ def build_backlog_section(topic: dict | None, tech: dict | None, tips: list) -> 
 def get_structure(config: dict | None) -> str:
     """Get the newsletter structure from config or use default."""
     if config and config.get("structure"):
-        print(f"  Structure source: Supabase newsletter_config")
-        print(f"  Structure preview: {config['structure'][:500]}")
         return config["structure"]
-    print(f"  Structure source: DEFAULT_STRUCTURE (code)")
-    print(f"  Structure preview: {DEFAULT_STRUCTURE[:500]}")
     return DEFAULT_STRUCTURE
 
 
@@ -479,7 +475,10 @@ def extract_featured_tech(content: str) -> str | None:
     # Find the first bold text after the Spotlight heading
     spotlight = re.search(r'## One.*?\n\*\*(.+?)\*\*', content, re.DOTALL)
     if spotlight:
+        name = spotlight.group(1)
+        # Strip markdown links: [text](url) → text
+        name = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', name)
         # Return just the company/product name (before any colon if present)
-        name = spotlight.group(1).split(':')[0].strip()
+        name = name.split(':')[0].strip()
         return name
     return None

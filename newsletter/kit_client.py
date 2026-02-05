@@ -82,16 +82,6 @@ def create_draft_broadcast(subject: str, content: str, description: str = None, 
         "preview_text": preview_text,
     }
 
-    # Debug: dump payload before sending
-    import json as _json
-    print(f"  Kit payload subject: {payload.get('subject')}")
-    print(f"  Kit payload description: {payload.get('description')}")
-    print(f"  Kit payload public: {payload.get('public')}")
-    print(f"  Kit payload send_at: {payload.get('send_at')}")
-    print(f"  Kit payload preview_text: {payload.get('preview_text')}")
-    print(f"  Kit payload content (first 500 chars): {payload.get('content', '')[:500]}")
-    print(f"  Kit payload keys: {list(payload.keys())}")
-
     response = requests.post(url, json=payload, headers=headers, timeout=30)
 
     if not response.ok:
