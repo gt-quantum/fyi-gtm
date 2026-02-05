@@ -8,11 +8,24 @@ RESEARCH_MODEL = "claude-3-5-haiku-20241022"
 MAX_RESEARCH_TOKENS = 2000
 
 # Default newsletter structure used when none is configured in the database
-DEFAULT_STRUCTURE = """## One: Sales Tech Spotlight
+DEFAULT_STRUCTURE = """## Intro
+- The intro appears before the Spotlight with no section header. It opens the newsletter directly.
+- Two to three sentences maximum. Written as a single short paragraph.
+- Should feel like an editor's note — conversational, direct, sets the tone for the issue.
+- Do not use a greeting like "Welcome to this week's issue" or "Happy Tuesday." Start with the substance.
+
+## One: Sales Tech Spotlight
 Feature ONE sales technology.
 - If TECH TO SPOTLIGHT was provided above, use it and research current details about that tool.
 - If no tech was provided, search for a trending or noteworthy sales tool and feature it.
-Include: what it does, why it matters now, and a practical use case.
+- Immediately below the Spotlight section header, display the tool name as a bold standalone line before any sub-labels begin. This is the first thing the reader sees after the section header. Example format:
+  **Company Name: Product or Feature Name**
+  Then begin the sub-label paragraphs below it. Use the actual tool name selected through research, not a placeholder.
+- Use the sub-labels **The problem**, **What it is**, **Key capabilities**, **Why now**, and **Best for** as bold inline labels separated from their content by a normal dash and not a colon.
+- Most sub-sections are short paragraphs (one to two sentences).
+- **Key capabilities** is the exception to the dash and the short paragraph — use three to four short bullet points here. Each bullet is one line covering a capability and its relevance.
+- Do not use bullet points anywhere else in the Spotlight.
+- If there is no relevant research content, do not make things up just to fill the sub-labels. Make sure we cover enough to make it practical and informative.
 
 ## Two: Tips to Try This Week
 Two actionable sales tips.
@@ -310,7 +323,11 @@ Do NOT default to any single tool or category.
 
 3. Output a structured research summary with:
    - Tech tool information (name, what it does, why it's relevant now, pricing if found)
+   - The specific GTM problem or pain point this tool addresses (e.g., pipeline visibility, forecast accuracy, rep productivity, data fragmentation)
+   - 3-4 key capabilities or features that connect to that problem — not a full feature list, just the ones that matter for the stated pain point
    - The tool's primary website URL and domain
+   - Recent trigger: any product launch, update, pricing change, acquisition, or industry signal that makes this tool timely right now
+   - Best fit: what type of team, sales motion, or situation this tool is built for, and where it's not a fit
    - 2-3 current statistics or trends relevant to sales/GTM with sources
    - Any notable news or developments in the space
    - Specific facts, quotes, or data points to include
