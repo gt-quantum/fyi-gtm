@@ -111,7 +111,10 @@ Respond with ONLY a JSON object (no markdown, no code blocks, no explanation):
     json_match = re.search(r'\{[^{}]+\}', response_text)
     if json_match:
         try:
-            result = json.loads(json_match.group())
+            # Sanitize control characters the model puts inside JSON string values
+            raw_json = json_match.group()
+            raw_json = raw_json.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+            result = json.loads(raw_json)
             if "topic" in result:
                 # Reject generic topics
                 generic_phrases = ["this week in", "weekly roundup", "sales update", "gtm update", "weekly digest"]
@@ -123,16 +126,22 @@ Respond with ONLY a JSON object (no markdown, no code blocks, no explanation):
         except json.JSONDecodeError as e:
             print(f"  JSON parse error: {e}")
 
-    # Fallback - try to generate something based on current month/quarter
+    # Fallback - rotate through diverse topics so the same one never repeats
+    import random
     from datetime import datetime
     now = datetime.now()
     month = now.strftime("%B")
-    quarter = f"Q{(now.month - 1) // 3 + 1}"
-
-    fallback = {
-        "topic": f"{quarter} Pipeline Strategies",
-        "description": f"Tactical approaches to building and accelerating pipeline in {month}."
-    }
+    fallback_options = [
+        {"topic": "Forecast Accuracy Under Pressure", "description": f"Why most teams still miss forecasts and what top orgs are doing differently in {month}."},
+        {"topic": "Buyer Behavior Shifts in B2B", "description": f"How B2B buying committees are changing and what sellers need to adapt to in {month}."},
+        {"topic": "Retention as a Growth Engine", "description": f"Why net revenue retention is overtaking new logo acquisition as the key growth metric in {month}."},
+        {"topic": "Sales Enablement ROI Gap", "description": f"Most enablement programs fail to move the needle — what separates the ones that do in {month}."},
+        {"topic": "Competitive Deal Execution", "description": f"Tactical approaches to winning competitive deals when buyers are evaluating multiple vendors in {month}."},
+        {"topic": "RevOps Tooling Consolidation", "description": f"Teams are cutting tool sprawl — which categories are getting consolidated and why in {month}."},
+        {"topic": "Pricing Strategy Rethink", "description": f"How usage-based and hybrid pricing models are reshaping GTM motions in {month}."},
+        {"topic": "Territory Planning Pitfalls", "description": f"Common territory design mistakes that tank quota attainment and how to fix them in {month}."},
+    ]
+    fallback = random.choice(fallback_options)
     print(f"  Using fallback topic: {fallback['topic']}")
     return fallback
 
