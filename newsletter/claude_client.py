@@ -235,7 +235,11 @@ def build_backlog_section(topic: dict | None, tech: dict | None, tips: list) -> 
 def get_structure(config: dict | None) -> str:
     """Get the newsletter structure from config or use default."""
     if config and config.get("structure"):
+        print(f"  Structure source: Supabase newsletter_config")
+        print(f"  Structure preview: {config['structure'][:500]}")
         return config["structure"]
+    print(f"  Structure source: DEFAULT_STRUCTURE (code)")
+    print(f"  Structure preview: {DEFAULT_STRUCTURE[:500]}")
     return DEFAULT_STRUCTURE
 
 
