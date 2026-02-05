@@ -148,10 +148,16 @@ A weekly newsletter for sales and GTM professionals covering sales technology, t
         parts.append(f"Themes: {config['themes']}")
     if config.get("tone"):
         parts.append(f"Tone: {config['tone']}")
-    if config.get("avoid"):
-        parts.append(f"Avoid: {config['avoid']}")
 
     return "\n".join(parts)
+
+
+def build_avoid_section(config: dict | None) -> str:
+    """Build a dedicated section for writing constraints from the avoid list."""
+    if not config or not config.get("avoid"):
+        return ""
+    return f"""WRITING CONSTRAINTS (follow strictly):
+{config['avoid']}"""
 
 
 def build_backlog_section(topic: dict | None, tech: dict | None, tips: list) -> str:
@@ -170,7 +176,8 @@ def build_backlog_section(topic: dict | None, tech: dict | None, tips: list) -> 
         if tech.get("why_relevant"):
             parts.append(f"  Why now: {tech['why_relevant']}")
         if tech.get("url"):
-            parts.append(f"  URL: {tech['url']}")
+            parts.append(f"  Website: {tech['url']}")
+            parts.append(f"  IMPORTANT: Link the tool name to this URL in the Spotlight section.")
 
     if tips:
         parts.append(f"\nTIPS TO INCLUDE:")
@@ -209,6 +216,7 @@ def generate_newsletter(
     context_section = build_context_section(config)
     backlog_section = build_backlog_section(topic, tech, tips or [])
     structure_section = get_structure(config)
+    avoid_section = build_avoid_section(config)
 
     # ========== STEP 1: RESEARCH WITH HAIKU ==========
     print("  Step 1: Researching with Haiku...")
@@ -218,7 +226,8 @@ def generate_newsletter(
     # ========== STEP 2: WRITING WITH SONNET ==========
     print("  Step 2: Writing with Sonnet...")
     newsletter = run_writing_step(
-        client, context_section, backlog_section, structure_section, research_notes
+        client, context_section, backlog_section, structure_section,
+        research_notes, avoid_section, tech
     )
     print("  Writing complete.")
 
@@ -243,13 +252,20 @@ def run_research_step(
 YOUR TASK:
 1. Use web search to find current, relevant information:
    - If a TECH TO SPOTLIGHT was provided, search for recent news, updates, or reviews about it
-   - If no tech was provided, search for trending sales/GTM tools this week
+   - If no tech was provided, search for a specific, named trending sales/GTM tool this week
    - Search for current sales statistics, trends, or insights
    - Look for timely, credible data points
 
-2. Output a structured research summary with:
+2. Research source guidance (follow strictly):
+   - Prefer signals from recent product launches, pricing changes, customer adoption patterns, acquisitions, platform policy shifts, or measurable behavior changes in buyer or seller workflows
+   - Use observable discussion from sources like LinkedIn posts by GTM operators, Reddit GTM communities, public earnings calls, or credible industry reporting
+   - Do NOT rely on vendor blogs, marketing pages, or press releases as primary sources. These may be used for factual product details only after independent signals confirm relevance.
+   - The tech must be a real, named product or platform that can be independently verified. Do not use generic category descriptions.
+
+3. Output a structured research summary with:
    - Tech tool information (name, what it does, why it's relevant now, pricing if found)
-   - 2-3 current statistics or trends relevant to sales/GTM
+   - The tool's primary website URL and domain (e.g., https://gong.io, https://apollo.io)
+   - 2-3 current statistics or trends relevant to sales/GTM with sources
    - Any notable news or developments in the space
    - Specific facts, quotes, or data points to include
 
@@ -270,17 +286,49 @@ Be factual and concise. This research will be used to write the newsletter."""
     return "\n".join(text_parts)
 
 
+def _extract_tech_domain(tech: dict | None) -> str | None:
+    """Extract the domain from a tech URL for logo generation."""
+    if not tech or not tech.get("url"):
+        return None
+    from urllib.parse import urlparse
+    parsed = urlparse(tech["url"])
+    domain = parsed.netloc or parsed.path
+    domain = domain.removeprefix("www.")
+    return domain if domain else None
+
+
 def run_writing_step(
     client,
     context_section: str,
     backlog_section: str,
     structure_section: str,
     research_notes: str,
+    avoid_section: str = "",
+    tech: dict | None = None,
 ) -> str:
     """
     Step 2: Use Sonnet (NO tools) to write the final newsletter.
     No web search = no tool-use commentary = clean output.
     """
+    # Build the tool image instruction
+    tech_domain = _extract_tech_domain(tech)
+    if tech_domain:
+        image_instructions = f"""TOOL IMAGE:
+- In the Spotlight section, include the tool's logo inline using: ![{tech.get('name', 'Tool')} logo](https://logo.clearbit.com/{tech_domain}?size=80)
+- Place the logo near the top of the Spotlight section, right after the heading.
+- If you want an additional image elsewhere in the newsletter for visual variety, you may use one Unsplash image: ![alt text](https://images.unsplash.com/photo-IMAGE_ID?w=600&h=400&fit=crop)
+- Do not use more than 2 images total."""
+    else:
+        image_instructions = """IMAGES:
+- Include 1 relevant image, only where it adds value
+- Use Unsplash images with this markdown format: ![alt text](https://images.unsplash.com/photo-IMAGE_ID?w=600&h=400&fit=crop)
+- Choose an image specific to the tool or topic being discussed, not generic stock photos
+- Place the image in the Spotlight section after the heading
+- Do not use more than 2 images total."""
+
+    # Build the avoid section block
+    avoid_block = f"\n\n{avoid_section}" if avoid_section else ""
+
     prompt = f"""{context_section}
 
 {backlog_section}
@@ -294,21 +342,13 @@ NEWSLETTER STRUCTURE:
 
 ---
 
-GUIDELINES:
-- Conversational but professional tone
-- Short paragraphs, easy to scan
-- Each section should be concise (2-4 sentences for the spotlight, 1-2 sentences per tip/takeaway)
-- Total length: 400-600 words
+FORMATTING:
+- Follow the formatting rules in the NEWSLETTER STRUCTURE above exactly
+- In the Spotlight: link the tool name to its website using markdown (e.g., [Tool Name](https://tool.com))
 - Format in Markdown
-- End with a brief closing line and sign off with exactly: "— FYI GTM Team" (use an em dash)
+- End with a brief closing line and sign off with exactly: "-- FYI GTM Team" (use two hyphens)
 
-IMAGES:
-- Include 1-2 relevant images total (not per section), only where they add value
-- Use Unsplash images with this markdown format: ![alt text](https://images.unsplash.com/photo-IMAGE_ID?w=600&h=400&fit=crop)
-- Good image topics: sales team, technology, business meeting, data dashboard, handshake, office
-- Example: ![Sales team collaborating](https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop)
-- Place images after the section heading, before the text
-- Skip images if none feel relevant
+{image_instructions}{avoid_block}
 
 Write the newsletter now. Start directly with the first section heading (## One:)."""
 
@@ -337,7 +377,7 @@ def clean_newsletter_content(content: str) -> str:
     """
     Clean up newsletter content:
     1. Remove any preamble before the first section heading
-    2. Ensure sign-off is exactly "— FYI GTM Team"
+    2. Ensure sign-off is exactly "-- FYI GTM Team"
     """
     import re
 
@@ -354,15 +394,15 @@ def clean_newsletter_content(content: str) -> str:
     # Ensure correct sign-off
     # Look for common sign-off patterns and replace with correct one
     signoff_patterns = [
-        r'—\s*The\s+\w+\s+Team\s*$',
-        r'—\s*\w+\s+Newsletter\s+Team\s*$',
-        r'—\s*The\s+GTM\s+Newsletter\s+Team\s*$',
-        r'—\s*GTM\s+Team\s*$',
+        r'(--|—)\s*The\s+\w+\s+Team\s*$',
+        r'(--|—)\s*\w+\s+Newsletter\s+Team\s*$',
+        r'(--|—)\s*The\s+GTM\s+Newsletter\s+Team\s*$',
+        r'(--|—)\s*GTM\s+Team\s*$',
         r'-\s*The\s+\w+\s+Team\s*$',
         r'-\s*FYI\s+GTM\s+Team\s*$',
     ]
 
-    correct_signoff = "— FYI GTM Team"
+    correct_signoff = "-- FYI GTM Team"
 
     for pattern in signoff_patterns:
         if re.search(pattern, content, re.IGNORECASE):
@@ -370,7 +410,7 @@ def clean_newsletter_content(content: str) -> str:
             break
 
     # If no sign-off found, add one
-    if not re.search(r'—\s*FYI\s+GTM\s+Team\s*$', content, re.IGNORECASE):
-        content = content.rstrip() + "\n\n— FYI GTM Team"
+    if not re.search(r'(--|—)\s*FYI\s+GTM\s+Team\s*$', content, re.IGNORECASE):
+        content = content.rstrip() + "\n\n-- FYI GTM Team"
 
     return content
