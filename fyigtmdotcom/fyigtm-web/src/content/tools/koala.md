@@ -1,7 +1,7 @@
 ---
 name: "Koala"
 description: "AI-powered content creation platform that generates SEO-optimized articles using GPT-4o and real-time data integration."
-url: "getkoala.com"
+url: "https://getkoala.com"
 primaryCategory: "content-creative"
 categories: ["content-creative", "ai-marketing-tools", "seo-organic"]
 aiAutomation: ["ai-native"]
