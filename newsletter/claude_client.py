@@ -4,7 +4,7 @@ import anthropic
 from .config import ANTHROPIC_API_KEY, WRITING_MODEL, MAX_WRITING_TOKENS
 
 # Models for 2-step pipeline
-RESEARCH_MODEL = "claude-3-5-haiku-20241022"
+RESEARCH_MODEL = "claude-haiku-4-5-20251001"
 MAX_RESEARCH_TOKENS = 2000
 
 # Default newsletter structure used when none is configured in the database
