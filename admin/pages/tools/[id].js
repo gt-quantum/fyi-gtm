@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
@@ -21,28 +21,39 @@ const tabs = [
 
 const NEWSLETTER_STATUSES = ['none', 'queued', 'scheduled', 'sent'];
 
+function arraysEqual(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return a === b;
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  return sa.every((v, i) => v === sb[i]);
+}
+
 export default function ToolDetail() {
   const router = useRouter();
-  const { id } = router.query;
+  const { id, tab } = router.query;
   const [tool, setTool] = useState(null);
   const [entry, setEntry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [saving, setSaving] = useState(false);
   const [researching, setResearching] = useState(false);
-  const [nlStatus, setNlStatus] = useState('none');
-  const [nlPriority, setNlPriority] = useState(0);
   const [linkedIssues, setLinkedIssues] = useState([]);
   const [publishingEntry, setPublishingEntry] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
 
-  // Editable classification fields
-  const [editContent, setEditContent] = useState('');
+  // Basic info fields
+  const [toolName, setToolName] = useState('');
+  const [toolSlug, setToolSlug] = useState('');
+  const [toolUrl, setToolUrl] = useState('');
+  const [screenshotUrl, setScreenshotUrl] = useState('');
+  const [summary, setSummary] = useState('');
+
+  // Classification fields
   const [primaryCategory, setPrimaryCategory] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [categories, setCategories] = useState([]);
   const [pricing, setPricing] = useState('');
-  const [summary, setSummary] = useState('');
-  const [oneLiner, setOneLiner] = useState('');
   const [priceNote, setPriceNote] = useState('');
   const [companySize, setCompanySize] = useState([]);
   const [aiAutomation, setAiAutomation] = useState([]);
@@ -50,10 +61,78 @@ export default function ToolDetail() {
   const [tags, setTags] = useState('');
   const [integrations, setIntegrations] = useState('');
 
+  // Directory content
+  const [editContent, setEditContent] = useState('');
+
+  // Newsletter
+  const [nlStatus, setNlStatus] = useState('none');
+  const [nlPriority, setNlPriority] = useState(0);
+
+  // Original snapshots for dirty tracking
+  const [origBasic, setOrigBasic] = useState(null);
+  const [origClassification, setOrigClassification] = useState(null);
+  const [origContent, setOrigContent] = useState('');
+  const [origNewsletter, setOrigNewsletter] = useState(null);
+
+  // Set initial tab from query param
+  const tabInitialized = useRef(false);
+  useEffect(() => {
+    if (tab && !tabInitialized.current && tabs.some(t => t.key === tab)) {
+      setActiveTab(tab);
+      tabInitialized.current = true;
+    }
+  }, [tab]);
+
   useEffect(() => {
     if (!id) return;
     loadTool();
   }, [id]);
+
+  function snapshotBasic(data) {
+    return {
+      name: data.name || '',
+      slug: data.slug || '',
+      url: data.url || '',
+      screenshotUrl: data.screenshot_url || '',
+      summary: data.summary || '',
+    };
+  }
+
+  function applyBasic(snap) {
+    setToolName(snap.name);
+    setToolSlug(snap.slug);
+    setToolUrl(snap.url);
+    setScreenshotUrl(snap.screenshotUrl);
+    setSummary(snap.summary);
+  }
+
+  function snapshotClassification(data) {
+    return {
+      primaryCategory: data.primary_category || '',
+      groupName: data.group_name || '',
+      categories: Array.isArray(data.categories) ? data.categories : [],
+      pricing: data.pricing || '',
+      priceNote: data.price_note || '',
+      companySize: Array.isArray(data.company_size) ? data.company_size : [],
+      aiAutomation: Array.isArray(data.ai_automation) ? data.ai_automation : [],
+      pricingTags: Array.isArray(data.pricing_tags) ? data.pricing_tags : [],
+      tags: Array.isArray(data.tags) ? data.tags.join(', ') : '',
+      integrations: Array.isArray(data.integrations) ? data.integrations.join(', ') : '',
+    };
+  }
+
+  function applyClassification(snap) {
+    setPrimaryCategory(snap.primaryCategory);
+    setGroupName(snap.groupName);
+    setCategories(snap.categories);
+    setPricing(snap.pricing);
+    setPriceNote(snap.priceNote);
+    setCompanySize(snap.companySize);
+    setAiAutomation(snap.aiAutomation);
+    setPricingTags(snap.pricingTags);
+    setTags(snap.tags);
+    setIntegrations(snap.integrations);
+  }
 
   async function loadTool() {
     setLoading(true);
@@ -62,19 +141,22 @@ export default function ToolDetail() {
       if (!res.ok) { router.push('/tools'); return; }
       const data = await res.json();
       setTool(data);
-      setNlStatus(data.newsletter_status || 'none');
-      setNlPriority(data.newsletter_priority || 0);
-      setPrimaryCategory(data.primary_category || '');
-      setGroupName(data.group_name || '');
-      setPricing(data.pricing || '');
-      setSummary(data.summary || '');
-      setOneLiner(data.one_liner || '');
-      setPriceNote(data.price_note || '');
-      setCompanySize(Array.isArray(data.company_size) ? data.company_size : []);
-      setAiAutomation(Array.isArray(data.ai_automation) ? data.ai_automation : []);
-      setPricingTags(Array.isArray(data.pricing_tags) ? data.pricing_tags : []);
-      setTags(Array.isArray(data.tags) ? data.tags.join(', ') : '');
-      setIntegrations(Array.isArray(data.integrations) ? data.integrations.join(', ') : '');
+
+      // Basic info
+      const bSnap = snapshotBasic(data);
+      applyBasic(bSnap);
+      setOrigBasic(bSnap);
+
+      // Classification
+      const cSnap = snapshotClassification(data);
+      applyClassification(cSnap);
+      setOrigClassification(cSnap);
+
+      // Newsletter
+      const nlSnap = { status: data.newsletter_status || 'none', priority: data.newsletter_priority || 0 };
+      setNlStatus(nlSnap.status);
+      setNlPriority(nlSnap.priority);
+      setOrigNewsletter(nlSnap);
 
       // Load directory entry
       const dirRes = await fetch('/api/directory');
@@ -87,6 +169,7 @@ export default function ToolDetail() {
             const full = await fullRes.json();
             setEntry(full);
             setEditContent(full.content || '');
+            setOrigContent(full.content || '');
           }
         }
       }
@@ -103,12 +186,53 @@ export default function ToolDetail() {
     setLoading(false);
   }
 
+  // --- Dirty state ---
+  const basicDirty = useMemo(() => {
+    if (!origBasic) return false;
+    return toolName !== origBasic.name || toolSlug !== origBasic.slug ||
+      toolUrl !== origBasic.url || screenshotUrl !== origBasic.screenshotUrl ||
+      summary !== origBasic.summary;
+  }, [toolName, toolSlug, toolUrl, screenshotUrl, summary, origBasic]);
+
+  const classificationDirty = useMemo(() => {
+    if (!origClassification) return false;
+    return (
+      primaryCategory !== origClassification.primaryCategory ||
+      groupName !== origClassification.groupName ||
+      !arraysEqual(categories, origClassification.categories) ||
+      pricing !== origClassification.pricing ||
+      priceNote !== origClassification.priceNote ||
+      !arraysEqual(companySize, origClassification.companySize) ||
+      !arraysEqual(aiAutomation, origClassification.aiAutomation) ||
+      !arraysEqual(pricingTags, origClassification.pricingTags) ||
+      tags !== origClassification.tags ||
+      integrations !== origClassification.integrations
+    );
+  }, [primaryCategory, groupName, categories, pricing, priceNote, companySize, aiAutomation, pricingTags, tags, integrations, origClassification]);
+
+  const contentDirty = useMemo(() => editContent !== origContent, [editContent, origContent]);
+
+  const newsletterDirty = useMemo(() => {
+    if (!origNewsletter) return false;
+    return nlStatus !== origNewsletter.status || nlPriority !== origNewsletter.priority;
+  }, [nlStatus, nlPriority, origNewsletter]);
+
+  // --- Discard ---
+  function discardBasic() { if (origBasic) applyBasic(origBasic); }
+  function discardClassification() { if (origClassification) applyClassification(origClassification); }
+  function discardContent() { setEditContent(origContent); }
+  function discardNewsletter() {
+    if (origNewsletter) { setNlStatus(origNewsletter.status); setNlPriority(origNewsletter.priority); }
+  }
+
   // Auto-set group when primary category changes
   function handlePrimaryCategoryChange(val) {
     setPrimaryCategory(val);
     if (val) {
       const inferredGroup = getGroupForCategory(val);
       if (inferredGroup) setGroupName(inferredGroup);
+      // Auto-add to categories if not present
+      if (!categories.includes(val)) setCategories([...categories, val]);
     }
   }
 
@@ -117,16 +241,75 @@ export default function ToolDetail() {
     else setArr([...arr, val]);
   }
 
+  function toggleCategory(catValue) {
+    // Don't allow removing the primary category from the multi-list
+    if (catValue === primaryCategory && categories.includes(catValue)) return;
+    if (categories.includes(catValue)) {
+      setCategories(categories.filter(c => c !== catValue));
+    } else {
+      setCategories([...categories, catValue]);
+    }
+  }
+
+  // Demote entry status from published → staged
+  async function demoteEntryIfPublished() {
+    if (entry && entry.status === 'published') {
+      try {
+        const res = await fetch(`/api/directory/${entry.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'staged' }),
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setEntry(updated);
+        }
+      } catch (err) {
+        console.error('Failed to demote entry status:', err);
+      }
+    }
+  }
+
+  async function saveBasic() {
+    setSaving(true);
+    try {
+      const body = {
+        name: toolName,
+        slug: toolSlug,
+        url: toolUrl,
+        screenshot_url: screenshotUrl,
+        summary: summary || null,
+      };
+      const res = await fetch(`/api/tools/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTool(updated);
+        const snap = snapshotBasic(updated);
+        setOrigBasic(snap);
+        await demoteEntryIfPublished();
+      }
+    } catch (err) {
+      alert('Failed to save');
+    }
+    setSaving(false);
+  }
+
   async function saveClassification() {
     setSaving(true);
     try {
       const body = {
         primary_category: primaryCategory || null,
-        group_category: groupName || null,
+        group_name: groupName || null,
+        categories: categories,
         pricing: pricing || null,
-        one_liner: oneLiner || null,
+        price_note: priceNote || null,
         ai_automation: aiAutomation,
         company_size: companySize,
+        pricing_tags: pricingTags,
         tags: tags ? tags.split(',').map(s => s.trim()).filter(Boolean) : [],
         integrations: integrations ? integrations.split(',').map(s => s.trim()).filter(Boolean) : [],
       };
@@ -138,6 +321,9 @@ export default function ToolDetail() {
       if (res.ok) {
         const updated = await res.json();
         setTool(updated);
+        const snap = snapshotClassification(updated);
+        setOrigClassification(snap);
+        await demoteEntryIfPublished();
       }
     } catch (err) {
       alert('Failed to save');
@@ -152,11 +338,15 @@ export default function ToolDetail() {
       const res = await fetch(`/api/directory/${entry.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: editContent }),
+        body: JSON.stringify({
+          content: editContent,
+          status: entry.status === 'published' ? 'staged' : entry.status,
+        }),
       });
       if (res.ok) {
         const updated = await res.json();
         setEntry(updated);
+        setOrigContent(editContent);
       }
     } catch (err) {
       alert('Failed to save content');
@@ -192,9 +382,7 @@ export default function ToolDetail() {
     try {
       const res = await fetch(`/api/tools/${id}/research`, { method: 'POST' });
       const data = await res.json();
-      if (data.success) {
-        setTool(prev => ({ ...prev, research_status: 'researching' }));
-      }
+      if (data.success) setTool(prev => ({ ...prev, research_status: 'researching' }));
     } catch (err) {
       alert('Failed to trigger research');
     }
@@ -212,6 +400,7 @@ export default function ToolDetail() {
       if (res.ok) {
         const updated = await res.json();
         setTool(updated);
+        setOrigNewsletter({ status: nlStatus, priority: nlPriority });
       }
     } catch (err) {
       alert('Failed to save newsletter settings');
@@ -222,14 +411,10 @@ export default function ToolDetail() {
   if (loading) return <Layout><p style={{ color: colors.dim, marginTop: 40 }}>Loading...</p></Layout>;
   if (!tool) return <Layout><p style={{ color: colors.error, marginTop: 40 }}>Tool not found</p></Layout>;
 
-  // Filtered categories based on selected group
-  const filteredCategories = groupName
-    ? getCategoriesForGroup(groupName)
-    : CATEGORIES;
+  const filteredCategories = groupName ? getCategoriesForGroup(groupName) : CATEGORIES;
 
   return (
     <Layout>
-      {/* Back link */}
       <Link href="/tools" style={{ color: colors.dim, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16 }}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         All Tools
@@ -241,7 +426,7 @@ export default function ToolDetail() {
         <StatusBadge status={tool.research_status} />
         {tool.url && (
           <a href={tool.url} target="_blank" rel="noopener" style={{ color: colors.accent, fontSize: 12 }}>
-            {new URL(tool.url).hostname} &#8599;
+            {(() => { try { return new URL(tool.url).hostname; } catch { return tool.url; } })()} &#8599;
           </a>
         )}
       </div>
@@ -268,54 +453,109 @@ export default function ToolDetail() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Pipeline stages */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <PipelineStage
-              label="Research"
-              status={tool.research_status}
+            <PipelineStage label="Research" status={tool.research_status}
               statusColor={tool.research_status === 'complete' ? '#22c55e' : tool.research_status === 'researching' ? '#f59e0b' : tool.research_status === 'failed' ? '#ef4444' : colors.dim}
-              detail={tool.research_completed_at ? `Completed ${new Date(tool.research_completed_at).toLocaleDateString()}` : null}
-            />
-            <PipelineStage
-              label="Directory"
-              status={entry ? entry.status : 'no entry'}
-              statusColor={entry?.status === 'published' ? '#22c55e' : entry?.status === 'approved' ? '#3b82f6' : entry ? '#f59e0b' : colors.dim}
-              detail={entry ? `${entry.status} entry` : 'Not created yet'}
-            />
-            <PipelineStage
-              label="Newsletter"
-              status={tool.newsletter_status || 'none'}
+              detail={tool.research_completed_at ? `Completed ${new Date(tool.research_completed_at).toLocaleDateString()}` : null} />
+            <PipelineStage label="Directory" status={entry ? entry.status : 'no entry'}
+              statusColor={entry?.status === 'published' ? '#22c55e' : entry?.status === 'staged' ? '#f59e0b' : entry?.status === 'approved' ? '#3b82f6' : entry ? '#818cf8' : colors.dim}
+              detail={entry ? `${entry.status} entry` : 'Not created yet'} />
+            <PipelineStage label="Newsletter" status={tool.newsletter_status || 'none'}
               statusColor={tool.newsletter_status === 'sent' ? '#22c55e' : tool.newsletter_status === 'scheduled' ? '#3b82f6' : tool.newsletter_status === 'queued' ? '#f59e0b' : colors.dim}
-              detail={tool.newsletter_priority > 0 ? `Priority: ${tool.newsletter_priority}/10` : null}
-            />
+              detail={tool.newsletter_priority > 0 ? `Priority: ${tool.newsletter_priority}/10` : null} />
           </div>
 
-          {/* Classification */}
-          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Classification</h3>
-              <button onClick={saveClassification} disabled={saving} style={saveBtnStyle}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-
-            {/* Group + Primary Category (linked dropdowns) */}
+          {/* Basic Info */}
+          <SectionCard title="Basic Info"
+            dirty={basicDirty} saving={saving}
+            onSave={saveBasic} onDiscard={discardBasic}
+          >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
-                <label style={labelStyle}>Group</label>
+                <label style={labelStyle}>Name</label>
+                <input value={toolName} onChange={(e) => setToolName(e.target.value)} style={fieldInputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Slug</label>
+                <input value={toolSlug} onChange={(e) => setToolSlug(e.target.value)} style={fieldInputStyle} placeholder="auto-generated-slug" />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Website URL</label>
+                <input value={toolUrl} onChange={(e) => setToolUrl(e.target.value)} style={fieldInputStyle} placeholder="https://..." />
+              </div>
+              <div>
+                <label style={labelStyle}>Screenshot / Icon URL</label>
+                <input value={screenshotUrl} onChange={(e) => setScreenshotUrl(e.target.value)} style={fieldInputStyle} placeholder="https://..." />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Summary</label>
+              <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3}
+                style={{ ...fieldInputStyle, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+                placeholder="Brief summary of the tool" />
+            </div>
+          </SectionCard>
+
+          {/* Classification */}
+          <SectionCard title="Classification"
+            dirty={classificationDirty} saving={saving}
+            onSave={saveClassification} onDiscard={discardClassification}
+          >
+            {/* Primary Group + Category */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Primary Group</label>
                 <select value={groupName} onChange={(e) => { setGroupName(e.target.value); setPrimaryCategory(''); }} style={selectStyle}>
                   <option value="">— Select group —</option>
-                  {GROUPS.map(g => (
-                    <option key={g.value} value={g.value}>{g.label}</option>
-                  ))}
+                  {GROUPS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>Primary Category</label>
                 <select value={primaryCategory} onChange={(e) => handlePrimaryCategoryChange(e.target.value)} style={selectStyle}>
                   <option value="">— Select category —</option>
-                  {filteredCategories.map(c => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
+                  {filteredCategories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
+              </div>
+            </div>
+
+            {/* Additional Categories (multi-select grouped by group) */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Additional Categories</label>
+              <p style={{ fontSize: 11, color: colors.subtle, marginBottom: 8 }}>
+                Select all categories that apply. Primary category is auto-included.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {GROUPS.map(group => (
+                  <div key={group.value}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: GROUP_COLORS[group.value] || colors.muted, marginBottom: 4 }}>
+                      {group.label}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {getCategoriesForGroup(group.value).map(cat => {
+                        const isPrimary = cat.value === primaryCategory;
+                        const isSelected = categories.includes(cat.value);
+                        return (
+                          <button key={cat.value} onClick={() => toggleCategory(cat.value)}
+                            title={isPrimary ? 'Primary category (cannot remove)' : ''}
+                            style={{
+                              padding: '3px 10px', borderRadius: 16, fontSize: 11, fontWeight: 500,
+                              cursor: isPrimary ? 'default' : 'pointer',
+                              border: `1px solid ${isSelected ? (GROUP_COLORS[group.value] || '#3b82f6') : colors.border}`,
+                              background: isSelected ? (GROUP_COLORS[group.value] || '#3b82f6') + '22' : 'transparent',
+                              color: isSelected ? (GROUP_COLORS[group.value] || '#60a5fa') : colors.dim,
+                              opacity: isPrimary ? 1 : undefined,
+                              transition: 'all 0.15s',
+                            }}>
+                            {isPrimary && <span style={{ marginRight: 3 }}>*</span>}
+                            {cat.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -325,9 +565,7 @@ export default function ToolDetail() {
                 <label style={labelStyle}>Pricing</label>
                 <select value={pricing} onChange={(e) => setPricing(e.target.value)} style={selectStyle}>
                   <option value="">— Select —</option>
-                  {PRICING_OPTIONS.map(p => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
+                  {PRICING_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
               <div>
@@ -336,7 +574,7 @@ export default function ToolDetail() {
               </div>
             </div>
 
-            {/* Company Size (multi-select chips) */}
+            {/* Company Size */}
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Company Size</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -347,7 +585,7 @@ export default function ToolDetail() {
               </div>
             </div>
 
-            {/* AI/Automation (multi-select chips) */}
+            {/* AI/Automation */}
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>AI / Automation</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -358,7 +596,7 @@ export default function ToolDetail() {
               </div>
             </div>
 
-            {/* Pricing Tags (multi-select chips) */}
+            {/* Pricing Tags */}
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Pricing Tags</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -369,13 +607,7 @@ export default function ToolDetail() {
               </div>
             </div>
 
-            {/* One-liner */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>One-Liner</label>
-              <input value={oneLiner} onChange={(e) => setOneLiner(e.target.value)} placeholder="Short description of the tool" style={fieldInputStyle} />
-            </div>
-
-            {/* Tags + Integrations (comma-separated) */}
+            {/* Tags + Integrations */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={labelStyle}>Tags (comma-separated)</label>
@@ -386,16 +618,13 @@ export default function ToolDetail() {
                 <input value={integrations} onChange={(e) => setIntegrations(e.target.value)} placeholder="e.g. hubspot, salesforce, slack" style={fieldInputStyle} />
               </div>
             </div>
-          </div>
+          </SectionCard>
 
           {/* Newsletter settings */}
-          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Newsletter Pipeline</h3>
-              <button onClick={saveNewsletter} disabled={saving} style={saveBtnStyle}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
+          <SectionCard title="Newsletter Pipeline"
+            dirty={newsletterDirty} saving={saving}
+            onSave={saveNewsletter} onDiscard={discardNewsletter}
+          >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={labelStyle}>Newsletter Status</label>
@@ -407,15 +636,11 @@ export default function ToolDetail() {
               </div>
               <div>
                 <label style={labelStyle}>Newsletter Priority (0-10)</label>
-                <input
-                  type="number" min="0" max="10"
-                  value={nlPriority}
-                  onChange={(e) => setNlPriority(parseInt(e.target.value) || 0)}
-                  style={fieldInputStyle}
-                />
+                <input type="number" min="0" max="10" value={nlPriority}
+                  onChange={(e) => setNlPriority(parseInt(e.target.value) || 0)} style={fieldInputStyle} />
               </div>
             </div>
-          </div>
+          </SectionCard>
         </div>
       )}
 
@@ -424,21 +649,12 @@ export default function ToolDetail() {
         <div>
           {tool.website_data || tool.research_blob ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {tool.website_data && (
-                <JsonViewer title="Scraped Website Data" data={tool.website_data} />
-              )}
-              {tool.research_blob && (
-                <TextViewer title="AI Research Summary" text={tool.research_blob} />
-              )}
-              {tool.review_data && (
-                <JsonViewer title="Review Data & Citations" data={tool.review_data} />
-              )}
+              {tool.website_data && <JsonViewer title="Scraped Website Data" data={tool.website_data} />}
+              {tool.research_blob && <TextViewer title="AI Research Summary" text={tool.research_blob} />}
+              {tool.review_data && <JsonViewer title="Review Data & Citations" data={tool.review_data} />}
             </div>
           ) : (
-            <div style={{ padding: 40, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-              <p style={{ color: colors.dim }}>No research data available.</p>
-              <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>Trigger research to populate this tab.</p>
-            </div>
+            <EmptyState message="No research data available." detail="Trigger research to populate this tab." />
           )}
         </div>
       )}
@@ -458,14 +674,19 @@ export default function ToolDetail() {
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={publishEntry} disabled={publishingEntry} style={{
-                    ...actionBtnStyle,
-                    borderColor: '#166534', color: '#4ade80', background: '#052e16',
-                  }}>
-                    {publishingEntry ? 'Publishing...' : 'Publish to GitHub'}
-                  </button>
-                  <button onClick={saveContent} disabled={saving} style={saveBtnStyle}>
+                  {contentDirty && <button onClick={discardContent} style={discardBtnStyle}>Discard</button>}
+                  <button onClick={saveContent} disabled={saving || !contentDirty}
+                    style={contentDirty ? saveBtnStyle : saveBtnDisabledStyle}>
                     {saving ? 'Saving...' : 'Save Content'}
+                  </button>
+                  <button onClick={publishEntry} disabled={publishingEntry || contentDirty} style={{
+                    ...actionBtnStyle,
+                    borderColor: contentDirty ? colors.border : '#166534',
+                    color: contentDirty ? colors.dim : '#4ade80',
+                    background: contentDirty ? 'transparent' : '#052e16',
+                    cursor: contentDirty ? 'not-allowed' : 'pointer',
+                  }} title={contentDirty ? 'Save changes before publishing' : 'Publish to GitHub'}>
+                    {publishingEntry ? 'Publishing...' : 'Publish to GitHub'}
                   </button>
                 </div>
               </div>
@@ -481,23 +702,26 @@ export default function ToolDetail() {
                 </div>
               )}
 
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
+              {contentDirty && entry.status === 'published' && (
+                <div style={{
+                  padding: '8px 14px', borderRadius: 8, marginBottom: 12, fontSize: 12,
+                  background: '#422006', color: '#fbbf24', border: '1px solid #78350f',
+                }}>
+                  Unsaved changes will set entry status to &quot;staged&quot; until republished.
+                </div>
+              )}
+
+              <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)}
                 style={{
                   width: '100%', minHeight: 400, padding: 16,
-                  background: colors.surface, border: `1px solid ${colors.border}`,
+                  background: colors.surface, border: `1px solid ${contentDirty ? '#3b82f6' : colors.border}`,
                   borderRadius: 8, color: colors.text, fontSize: 13,
                   fontFamily: "'IBM Plex Mono', monospace", lineHeight: 1.6,
-                  resize: 'vertical', outline: 'none',
-                }}
-              />
+                  resize: 'vertical', outline: 'none', transition: 'border-color 0.15s',
+                }} />
             </>
           ) : (
-            <div style={{ padding: 40, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-              <p style={{ color: colors.dim }}>No directory entry yet.</p>
-              <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>Run the directory agent to generate content from research data.</p>
-            </div>
+            <EmptyState message="No directory entry yet." detail="Run the directory agent to generate content from research data." />
           )}
         </div>
       )}
@@ -505,14 +729,10 @@ export default function ToolDetail() {
       {/* ===== NEWSLETTER TAB ===== */}
       {activeTab === 'newsletter' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Newsletter settings */}
-          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Newsletter Settings</h3>
-              <button onClick={saveNewsletter} disabled={saving} style={saveBtnStyle}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
+          <SectionCard title="Newsletter Settings"
+            dirty={newsletterDirty} saving={saving}
+            onSave={saveNewsletter} onDiscard={discardNewsletter}
+          >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={labelStyle}>Status</label>
@@ -524,22 +744,17 @@ export default function ToolDetail() {
               </div>
               <div>
                 <label style={labelStyle}>Priority (0-10)</label>
-                <input
-                  type="number" min="0" max="10"
-                  value={nlPriority}
-                  onChange={(e) => setNlPriority(parseInt(e.target.value) || 0)}
-                  style={fieldInputStyle}
-                />
+                <input type="number" min="0" max="10" value={nlPriority}
+                  onChange={(e) => setNlPriority(parseInt(e.target.value) || 0)} style={fieldInputStyle} />
               </div>
             </div>
-          </div>
+          </SectionCard>
 
-          {/* Linked issues */}
           <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Linked Newsletter Issues</h3>
             {linkedIssues.length === 0 ? (
               <div style={{ padding: 24, textAlign: 'center' }}>
-                <p style={{ color: colors.dim, fontSize: 13 }}>This tool hasn't been featured in a newsletter yet.</p>
+                <p style={{ color: colors.dim, fontSize: 13 }}>This tool hasn&apos;t been featured in a newsletter yet.</p>
               </div>
             ) : (
               <DataTable
@@ -561,6 +776,32 @@ export default function ToolDetail() {
 }
 
 // --- Components ---
+
+function SectionCard({ title, children, dirty, saving, onSave, onDiscard }) {
+  return (
+    <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600 }}>{title}</h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {dirty && <button onClick={onDiscard} style={discardBtnStyle}>Discard</button>}
+          <button onClick={onSave} disabled={saving || !dirty} style={dirty ? saveBtnStyle : saveBtnDisabledStyle}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({ message, detail }) {
+  return (
+    <div style={{ padding: 40, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
+      <p style={{ color: colors.dim }}>{message}</p>
+      {detail && <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>{detail}</p>}
+    </div>
+  );
+}
 
 function ChipToggle({ label, active, onClick }) {
   return (
@@ -635,6 +876,17 @@ const actionBtnStyle = {
 const saveBtnStyle = {
   padding: '6px 14px', border: '1px solid #3b82f6', borderRadius: 6,
   background: '#3b82f6', color: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+};
+
+const saveBtnDisabledStyle = {
+  padding: '6px 14px', border: `1px solid ${colors.border}`, borderRadius: 6,
+  background: colors.surface, color: colors.dim, fontSize: 12, fontWeight: 500, cursor: 'not-allowed',
+  opacity: 0.5,
+};
+
+const discardBtnStyle = {
+  padding: '6px 14px', border: `1px solid ${colors.border}`, borderRadius: 6,
+  background: 'transparent', color: colors.muted, fontSize: 12, fontWeight: 500, cursor: 'pointer',
 };
 
 const labelStyle = {

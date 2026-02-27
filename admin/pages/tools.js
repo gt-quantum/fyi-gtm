@@ -19,6 +19,9 @@ export default function Tools() {
   const [researchFilter, setResearchFilter] = useState('all');
   const [entryFilter, setEntryFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [publishing, setPublishing] = useState(false);
+  const [publishResult, setPublishResult] = useState(null);
 
   async function loadTools() {
     try {
@@ -71,6 +74,55 @@ export default function Tools() {
     setResearching(prev => ({ ...prev, [toolId]: false }));
   }
 
+  function handleSelect(id, checked) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
+  function handleSelectAll(checked) {
+    if (checked) {
+      // Only select tools that have an entry_id (publishable)
+      const publishable = filtered.filter(t => t.entry_id).map(t => t.id);
+      setSelectedIds(new Set(publishable));
+    } else {
+      setSelectedIds(new Set());
+    }
+  }
+
+  async function handleBulkPublish() {
+    const entryIds = [];
+    for (const toolId of selectedIds) {
+      const tool = tools.find(t => t.id === toolId);
+      if (tool?.entry_id) entryIds.push(tool.entry_id);
+    }
+    if (entryIds.length === 0) return;
+    if (!confirm(`Publish ${entryIds.length} entries to GitHub?`)) return;
+
+    setPublishing(true);
+    setPublishResult(null);
+    try {
+      const res = await fetch('/api/directory/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPublishResult({ ok: true, message: `Published ${data.published} entries. Commit: ${data.commitSha?.slice(0, 7)}` });
+        setSelectedIds(new Set());
+        loadTools();
+      } else {
+        setPublishResult({ ok: false, message: data.error });
+      }
+    } catch (err) {
+      setPublishResult({ ok: false, message: err.message });
+    }
+    setPublishing(false);
+  }
+
   const filtered = useMemo(() => {
     let list = tools;
     if (researchFilter !== 'all') list = list.filter(t => t.research_status === researchFilter);
@@ -95,10 +147,11 @@ export default function Tools() {
   }, [tools]);
 
   const entryCounts = useMemo(() => {
-    const counts = { published: 0, draft: 0, no_entry: 0 };
+    const counts = { published: 0, draft: 0, staged: 0, no_entry: 0 };
     tools.forEach(t => {
       if (!t.entry_status) counts.no_entry++;
       else if (t.entry_status === 'published') counts.published++;
+      else if (t.entry_status === 'staged') counts.staged++;
       else if (t.entry_status === 'draft') counts.draft++;
     });
     return counts;
@@ -148,8 +201,26 @@ export default function Tools() {
     <Layout>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>Tools</h1>
-        <button onClick={() => setShowAdd(true)} style={primaryBtnStyle}>+ Add Tool</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {selectedIds.size > 0 && (
+            <button onClick={handleBulkPublish} disabled={publishing} style={publishBtnStyle}>
+              {publishing ? 'Publishing...' : `Publish ${selectedIds.size} to GitHub`}
+            </button>
+          )}
+          <button onClick={() => setShowAdd(true)} style={primaryBtnStyle}>+ Add Tool</button>
+        </div>
       </div>
+
+      {publishResult && (
+        <div style={{
+          padding: '10px 16px', borderRadius: 8, marginBottom: 16, fontSize: 13,
+          background: publishResult.ok ? '#052e16' : '#450a0a',
+          color: publishResult.ok ? '#4ade80' : '#f87171',
+          border: `1px solid ${publishResult.ok ? '#14532d' : '#7f1d1d'}`,
+        }}>
+          {publishResult.message}
+        </div>
+      )}
 
       {/* Search + filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -181,6 +252,7 @@ export default function Tools() {
           options={[
             { value: 'all', label: 'All' },
             { value: 'published', label: 'Published', count: entryCounts.published },
+            { value: 'staged', label: 'Staged', count: entryCounts.staged },
             { value: 'draft', label: 'Draft', count: entryCounts.draft },
             { value: 'no_entry', label: 'No Entry', count: entryCounts.no_entry },
           ]}
@@ -190,7 +262,11 @@ export default function Tools() {
       <DataTable
         columns={columns}
         data={filtered}
-        onRowClick={(row) => router.push(`/tools/${row.id}`)}
+        selectable
+        selectedIds={selectedIds}
+        onSelect={handleSelect}
+        onSelectAll={handleSelectAll}
+        onRowClick={(row) => router.push(`/tools/${row.id}?tab=directory`)}
         emptyMessage="No tools found. Add one above."
       />
 
@@ -217,6 +293,11 @@ export default function Tools() {
 const primaryBtnStyle = {
   padding: '7px 16px', border: '1px solid #3b82f6', borderRadius: 6,
   background: '#3b82f6', color: 'white', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+};
+
+const publishBtnStyle = {
+  padding: '7px 16px', border: '1px solid #22c55e', borderRadius: 6,
+  background: '#052e16', color: '#4ade80', fontSize: 13, fontWeight: 500, cursor: 'pointer',
 };
 
 const actionBtnStyle = {

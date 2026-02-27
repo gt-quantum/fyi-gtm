@@ -20,19 +20,20 @@ router.get('/', async (req, res) => {
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
-  // Merge entry_status from directory_entries
+  // Merge entry_status + entry_id from directory_entries
   const { data: entries } = await supabase
     .from('directory_entries')
     .select('id, tool_id, status');
 
   const entryMap = {};
   if (entries) {
-    entries.forEach(e => { entryMap[e.tool_id] = e.status; });
+    entries.forEach(e => { entryMap[e.tool_id] = { entry_id: e.id, entry_status: e.status }; });
   }
 
   const merged = data.map(t => ({
     ...t,
-    entry_status: entryMap[t.id] || null,
+    entry_status: entryMap[t.id]?.entry_status || null,
+    entry_id: entryMap[t.id]?.entry_id || null,
   }));
 
   res.json(merged);
@@ -76,9 +77,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const allowedFields = [
     'name', 'slug', 'url', 'research_status', 'category', 'primary_category',
-    'pricing', 'screenshot_url', 'group_category', 'group_name', 'tags', 'integrations',
-    'company_size', 'ai_automation', 'one_liner', 'description', 'summary',
-    'price_note', 'pricing_tags', 'categories',
+    'pricing', 'screenshot_url', 'group_name', 'tags', 'integrations',
+    'company_size', 'ai_automation', 'summary',
+    'price_note', 'pricing_tags', 'categories', 'seed_upvotes', 'featured',
     'newsletter_status', 'newsletter_priority', 'featured_in_issue_id'
   ];
 
