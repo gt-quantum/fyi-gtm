@@ -71,7 +71,7 @@ export default function Layout({ children }) {
         {/* Brand */}
         <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${colors.border}` }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/mascot.png" alt="FYI GTM" width={28} height={28} style={{ borderRadius: 8, objectFit: 'contain' }} />
+            <img src="/logo.png" alt="FYI GTM" width={28} height={28} style={{ borderRadius: 6, objectFit: 'contain' }} />
             <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>FYI GTM</span>
           </Link>
         </div>
