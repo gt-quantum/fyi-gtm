@@ -5,12 +5,18 @@ export default async function handler(req, res) {
   if (!isAuthenticated(req)) return res.status(401).json({ error: 'Unauthorized' });
 
   const parts = req.query.id;
-  const isTrigger = parts[parts.length - 1] === 'trigger';
-  const id = isTrigger ? parts.slice(0, -1).join('/') : parts.join('/');
+  const lastPart = parts[parts.length - 1];
+  const isTrigger = lastPart === 'trigger';
+  const isMetadata = lastPart === 'metadata';
+  const id = (isTrigger || isMetadata) ? parts.slice(0, -1).join('/') : parts.join('/');
 
   try {
     if (req.method === 'POST' && isTrigger) {
       const data = await orchestratorFetch(`/api/automations/${id}/trigger`, { method: 'POST' });
+      return res.json(data);
+    }
+    if (req.method === 'GET' && isMetadata) {
+      const data = await orchestratorFetch(`/api/automations/${id}/metadata`);
       return res.json(data);
     }
     if (req.method === 'GET') {

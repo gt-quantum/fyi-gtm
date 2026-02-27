@@ -19,7 +19,10 @@ export default function Newsletter() {
   }, []);
 
   const columns = [
-    { key: 'subject', label: 'Subject', render: (v) => <span style={{ fontWeight: 500, fontSize: 13 }}>{v || 'Untitled'}</span> },
+    { key: 'subject', label: 'Subject', render: (v, row) => {
+      const display = v || (row.issue_number ? `Issue #${row.issue_number}` + (row.newsletter_topics?.topic ? ` — ${row.newsletter_topics.topic}` : '') : 'Untitled');
+      return <span style={{ fontWeight: 500, fontSize: 13 }}>{display}</span>;
+    }},
     { key: 'newsletter_topics', label: 'Topic', width: 160, render: (v) => (
       <span style={{ color: colors.muted, fontSize: 12 }}>{v?.topic || '-'}</span>
     )},
@@ -72,7 +75,7 @@ export default function Newsletter() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600 }}>{selected.subject || 'Untitled'}</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 600 }}>{selected.subject || (selected.issue_number ? `Issue #${selected.issue_number}` + (selected.newsletter_topics?.topic ? ` — ${selected.newsletter_topics.topic}` : '') : 'Untitled')}</h2>
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: colors.dim, fontSize: 20, cursor: 'pointer' }}>&times;</button>
             </div>
             <div style={{ fontSize: 12, color: colors.dim, marginBottom: 12 }}>

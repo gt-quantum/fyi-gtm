@@ -16,7 +16,8 @@ export default function Tools() {
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
   const [researching, setResearching] = useState({});
-  const [filter, setFilter] = useState('all');
+  const [researchFilter, setResearchFilter] = useState('all');
+  const [entryFilter, setEntryFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   async function loadTools() {
@@ -72,35 +73,58 @@ export default function Tools() {
 
   const filtered = useMemo(() => {
     let list = tools;
-    if (filter !== 'all') list = list.filter(t => t.research_status === filter);
+    if (researchFilter !== 'all') list = list.filter(t => t.research_status === researchFilter);
+    if (entryFilter !== 'all') {
+      if (entryFilter === 'no_entry') {
+        list = list.filter(t => !t.entry_status);
+      } else {
+        list = list.filter(t => t.entry_status === entryFilter);
+      }
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(t => t.name.toLowerCase().includes(q) || (t.url && t.url.toLowerCase().includes(q)));
     }
     return list;
-  }, [tools, filter, search]);
+  }, [tools, researchFilter, entryFilter, search]);
 
-  const statusCounts = useMemo(() => {
+  const researchCounts = useMemo(() => {
     const counts = {};
     tools.forEach(t => { counts[t.research_status] = (counts[t.research_status] || 0) + 1; });
     return counts;
   }, [tools]);
 
+  const entryCounts = useMemo(() => {
+    const counts = { published: 0, draft: 0, no_entry: 0 };
+    tools.forEach(t => {
+      if (!t.entry_status) counts.no_entry++;
+      else if (t.entry_status === 'published') counts.published++;
+      else if (t.entry_status === 'draft') counts.draft++;
+    });
+    return counts;
+  }, [tools]);
+
   const columns = [
     { key: 'name', label: 'Name', render: (v) => <span style={{ fontWeight: 500 }}>{v}</span> },
-    { key: 'url', label: 'URL', width: 160, render: (v) => {
+    { key: 'url', label: 'URL', width: 140, render: (v) => {
       try { return <span style={{ color: colors.dim, fontSize: 12 }}>{new URL(v).hostname}</span>; }
       catch { return <span style={{ color: colors.dim, fontSize: 12 }}>{v}</span>; }
     }},
-    { key: 'research_status', label: 'Status', width: 110, render: (v) => <StatusBadge status={v} small /> },
-    { key: 'primary_category', label: 'Category', width: 140, render: (v) => <span style={{ color: colors.dim, fontSize: 12 }}>{v || '-'}</span> },
-    { key: 'pricing', label: 'Pricing', width: 100, render: (v) => <span style={{ color: colors.dim, fontSize: 12 }}>{v || '-'}</span> },
-    { key: 'newsletter_status', label: 'Newsletter', width: 90, render: (v, row) => {
+    { key: 'research_status', label: 'Research', width: 100, render: (v) => <StatusBadge status={v} small /> },
+    { key: 'entry_status', label: 'Entry', width: 100, render: (v) => <StatusBadge status={v || 'no entry'} small /> },
+    { key: 'newsletter_status', label: 'Newsletter', width: 100, render: (v, row) => {
       const s = v || 'none';
-      const c = s === 'sent' ? '#22c55e' : s === 'scheduled' ? '#3b82f6' : s === 'queued' ? '#f59e0b' : colors.subtle;
-      return <span style={{ color: c, fontSize: 11, fontWeight: 500 }}>{s}{row.newsletter_priority > 0 ? ` (${row.newsletter_priority})` : ''}</span>;
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <StatusBadge status={s} small />
+          {row.newsletter_priority > 0 && <span style={{ color: colors.dim, fontSize: 10 }}>({row.newsletter_priority})</span>}
+        </span>
+      );
     }},
-    { key: 'updated_at', label: 'Updated', width: 100, render: (v) => <span style={{ color: colors.dim, fontSize: 12 }}>{timeAgo(v)}</span> },
+    { key: 'primary_category', label: 'Category', width: 140, render: (v) => (
+      <span style={{ color: colors.dim, fontSize: 12 }}>{v ? v.replace(/-/g, ' ') : '-'}</span>
+    )},
+    { key: 'updated_at', label: 'Updated', width: 90, render: (v) => <span style={{ color: colors.dim, fontSize: 12 }}>{timeAgo(v)}</span> },
     { key: '_actions', label: '', width: 90, render: (_, row) => (
       <div onClick={(e) => e.stopPropagation()}>
         {(row.research_status === 'queued' || row.research_status === 'failed') && (
@@ -127,8 +151,8 @@ export default function Tools() {
         <button onClick={() => setShowAdd(true)} style={primaryBtnStyle}>+ Add Tool</button>
       </div>
 
-      {/* Search + filter */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Search + filters */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           type="text"
           placeholder="Search tools..."
@@ -137,17 +161,30 @@ export default function Tools() {
           style={{ ...inputStyle, maxWidth: 260, padding: '7px 12px' }}
         />
         <FilterChips
-          value={filter}
-          onChange={setFilter}
+          value={researchFilter}
+          onChange={setResearchFilter}
           options={[
             { value: 'all', label: 'All', count: tools.length },
-            { value: 'queued', label: 'Queued', count: statusCounts.queued || 0 },
-            { value: 'researching', label: 'Researching', count: statusCounts.researching || 0 },
-            { value: 'complete', label: 'Complete', count: statusCounts.complete || 0 },
-            { value: 'failed', label: 'Failed', count: statusCounts.failed || 0 },
+            { value: 'queued', label: 'Queued', count: researchCounts.queued || 0 },
+            { value: 'researching', label: 'Researching', count: researchCounts.researching || 0 },
+            { value: 'complete', label: 'Complete', count: researchCounts.complete || 0 },
+            { value: 'failed', label: 'Failed', count: researchCounts.failed || 0 },
           ]}
         />
         <button onClick={loadTools} style={{ ...actionBtnStyle, marginLeft: 'auto' }}>Refresh</button>
+      </div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, color: colors.dim, fontWeight: 500 }}>Entry:</span>
+        <FilterChips
+          value={entryFilter}
+          onChange={setEntryFilter}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'published', label: 'Published', count: entryCounts.published },
+            { value: 'draft', label: 'Draft', count: entryCounts.draft },
+            { value: 'no_entry', label: 'No Entry', count: entryCounts.no_entry },
+          ]}
+        />
       </div>
 
       <DataTable

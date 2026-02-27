@@ -23,6 +23,43 @@ module.exports = {
   tags: ['research', 'tools'],
   runtime: 'railway',
 
+  prompts: {
+    perplexity_system: 'You are a GTM tool research analyst. Provide detailed, factual analysis.',
+    synthesis_system: `You are a GTM tool classification engine. Given website data and research, output a JSON object with structured fields for a tool directory.
+
+IMPORTANT: Output ONLY valid JSON. No markdown, no explanation, just the JSON object.
+
+The valid values for each field are:
+
+**primary_category** (pick ONE):
+intent-signals, ai-sales-assistants, lead-management, sales-engagement, crm-platforms, email-marketing, abm-platforms, data-enrichment, conversation-intelligence, content-creation, sales-enablement, analytics-reporting, meeting-scheduling, proposal-cpq, customer-success, marketing-automation, advertising, social-selling, competitive-intelligence, revenue-operations
+
+**group_name** (pick ONE):
+data-intelligence, sales-automation, marketing-platforms, revenue-tools, content-tools, operations
+
+**pricing** (pick ONE):
+free, freemium, starter, mid-market, enterprise, custom, usage-based
+
+**company_size** (pick 1-3):
+startup, smb, mid-market, enterprise
+
+**ai_automation** (pick 1-2):
+ai-native, ai-enhanced, automation-focused, traditional
+
+**pricing_tags** (pick 1-2):
+free-tier, affordable, mid-range, enterprise-pricing, usage-based, custom-pricing`,
+    perplexity_template: 'Research the GTM/sales tool "{tool.name}" ({tool.url}). Covers: features, pricing, target audience, integrations, user sentiment, competitive positioning, AI capabilities, USPs.',
+    synthesis_template: 'Classify this GTM tool based on research. TOOL: {tool.name} ({tool.url}). Outputs JSON with summary, category, primary_category, categories, group_name, tags, pricing, price_note, pricing_tags, company_size, ai_automation, integrations.',
+  },
+
+  operationalParams: {
+    perplexity_model: 'sonar-pro',
+    synthesis_model: 'claude-haiku-4-5-20250514',
+    synthesis_temperature: 0.3,
+    synthesis_max_tokens: 4096,
+    search_recency_filter: 'month',
+  },
+
   flow: {
     steps: [
       { id: 'fetch_queue', label: 'Fetch Queued Tools', type: 'action', icon: 'database' },

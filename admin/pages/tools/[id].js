@@ -4,12 +4,13 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import TabBar from '../../components/TabBar';
 import StatusBadge from '../../components/StatusBadge';
-import { colors } from '../../lib/theme';
+import DataTable from '../../components/DataTable';
+import { colors, timeAgo } from '../../lib/theme';
 
 const tabs = [
-  { key: 'pipeline', label: 'Pipeline' },
-  { key: 'content', label: 'Content' },
-  { key: 'metadata', label: 'Metadata' },
+  { key: 'overview', label: 'Overview' },
+  { key: 'directory', label: 'Directory Entry' },
+  { key: 'newsletter', label: 'Newsletter' },
   { key: 'research', label: 'Research Data' },
 ];
 
@@ -21,11 +22,14 @@ export default function ToolDetail() {
   const [tool, setTool] = useState(null);
   const [entry, setEntry] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('pipeline');
+  const [activeTab, setActiveTab] = useState('overview');
   const [saving, setSaving] = useState(false);
   const [researching, setResearching] = useState(false);
   const [nlStatus, setNlStatus] = useState('none');
   const [nlPriority, setNlPriority] = useState(0);
+  const [linkedIssues, setLinkedIssues] = useState([]);
+  const [publishingEntry, setPublishingEntry] = useState(false);
+  const [publishResult, setPublishResult] = useState(null);
 
   // Editable fields
   const [editContent, setEditContent] = useState('');
@@ -52,18 +56,19 @@ export default function ToolDetail() {
         tags: Array.isArray(data.tags) ? data.tags.join(', ') : '',
         integrations: Array.isArray(data.integrations) ? data.integrations.join(', ') : '',
         company_size: Array.isArray(data.company_size) ? data.company_size.join(', ') : '',
-        ai_automation: data.ai_automation || '',
+        ai_automation: Array.isArray(data.ai_automation) ? data.ai_automation.join(', ') : '',
         one_liner: data.one_liner || '',
         group_category: data.group_category || '',
+        summary: data.summary || '',
+        price_note: data.price_note || '',
       });
 
-      // Try loading directory entry for this tool
+      // Load directory entry
       const dirRes = await fetch('/api/directory');
       if (dirRes.ok) {
         const entries = await dirRes.json();
         const match = entries.find(e => e.tool_id === data.id);
         if (match) {
-          // Fetch full entry with content
           const fullRes = await fetch(`/api/directory/${match.id}`);
           if (fullRes.ok) {
             const full = await fullRes.json();
@@ -71,6 +76,13 @@ export default function ToolDetail() {
             setEditContent(full.content || '');
           }
         }
+      }
+
+      // Load linked newsletter issues
+      const nlRes = await fetch('/api/newsletter/issues');
+      if (nlRes.ok) {
+        const allIssues = await nlRes.json();
+        setLinkedIssues(allIssues.filter(i => i.tool_id === data.id));
       }
     } catch (err) {
       console.error('Failed to load tool:', err);
@@ -87,7 +99,7 @@ export default function ToolDetail() {
         pricing: editMeta.pricing,
         group_category: editMeta.group_category,
         one_liner: editMeta.one_liner,
-        ai_automation: editMeta.ai_automation,
+        ai_automation: editMeta.ai_automation ? editMeta.ai_automation.split(',').map(s => s.trim()).filter(Boolean) : [],
         tags: editMeta.tags ? editMeta.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
         integrations: editMeta.integrations ? editMeta.integrations.split(',').map(s => s.trim()).filter(Boolean) : [],
         company_size: editMeta.company_size ? editMeta.company_size.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -124,6 +136,29 @@ export default function ToolDetail() {
       alert('Failed to save content');
     }
     setSaving(false);
+  }
+
+  async function publishEntry() {
+    if (!entry) return;
+    setPublishingEntry(true);
+    setPublishResult(null);
+    try {
+      const res = await fetch('/api/directory/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryIds: [entry.id] }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPublishResult({ ok: true, message: `Published. Commit: ${data.commitSha?.slice(0, 7)}` });
+        loadTool();
+      } else {
+        setPublishResult({ ok: false, message: data.error });
+      }
+    } catch (err) {
+      setPublishResult({ ok: false, message: err.message });
+    }
+    setPublishingEntry(false);
   }
 
   async function triggerResearch() {
@@ -194,8 +229,8 @@ export default function ToolDetail() {
 
       <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
-      {/* Pipeline tab */}
-      {activeTab === 'pipeline' && (
+      {/* Overview tab — Pipeline + Classification */}
+      {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Pipeline stages */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
@@ -229,17 +264,11 @@ export default function ToolDetail() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 11, color: colors.dim, marginBottom: 3, fontWeight: 500 }}>
-                  Newsletter Status
-                </label>
+                <label style={labelStyle}>Newsletter Status</label>
                 <select
                   value={nlStatus}
                   onChange={(e) => setNlStatus(e.target.value)}
-                  style={{
-                    width: '100%', padding: '7px 10px',
-                    border: `1px solid ${colors.border}`, borderRadius: 6,
-                    background: colors.bg, color: colors.text, fontSize: 13, outline: 'none',
-                  }}
+                  style={selectStyle}
                 >
                   {NEWSLETTER_STATUSES.map(s => (
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -247,36 +276,79 @@ export default function ToolDetail() {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, color: colors.dim, marginBottom: 3, fontWeight: 500 }}>
-                  Newsletter Priority (0-10)
-                </label>
+                <label style={labelStyle}>Newsletter Priority (0-10)</label>
                 <input
                   type="number" min="0" max="10"
                   value={nlPriority}
                   onChange={(e) => setNlPriority(parseInt(e.target.value) || 0)}
-                  style={{
-                    width: '100%', padding: '7px 10px',
-                    border: `1px solid ${colors.border}`, borderRadius: 6,
-                    background: colors.bg, color: colors.text, fontSize: 13, outline: 'none',
-                  }}
+                  style={fieldInputStyle}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Classification fields */}
+          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Classification</h3>
+              <button onClick={saveMetadata} disabled={saving} style={saveBtnStyle}>
+                {saving ? 'Saving...' : 'Save Metadata'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {Object.entries(editMeta).map(([key, val]) => (
+                <div key={key}>
+                  <label style={labelStyle}>{key.replace(/_/g, ' ')}</label>
+                  <input
+                    value={val}
+                    onChange={(e) => setEditMeta(prev => ({ ...prev, [key]: e.target.value }))}
+                    style={fieldInputStyle}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* Content tab */}
-      {activeTab === 'content' && (
+      {/* Directory Entry tab */}
+      {activeTab === 'directory' && (
         <div>
           {entry ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: colors.muted }}>Directory entry content (Markdown)</span>
-                <button onClick={saveContent} disabled={saving} style={saveBtnStyle}>
-                  {saving ? 'Saving...' : 'Save Content'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <StatusBadge status={entry.status || 'draft'} />
+                  {entry.published_at && (
+                    <span style={{ fontSize: 12, color: colors.dim }}>
+                      Published {new Date(entry.published_at).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={publishEntry} disabled={publishingEntry} style={{
+                    ...actionBtnStyle,
+                    borderColor: '#166534', color: '#4ade80', background: '#052e16',
+                  }}>
+                    {publishingEntry ? 'Publishing...' : 'Publish to GitHub'}
+                  </button>
+                  <button onClick={saveContent} disabled={saving} style={saveBtnStyle}>
+                    {saving ? 'Saving...' : 'Save Content'}
+                  </button>
+                </div>
               </div>
+
+              {publishResult && (
+                <div style={{
+                  padding: '8px 14px', borderRadius: 8, marginBottom: 12, fontSize: 12,
+                  background: publishResult.ok ? '#052e16' : '#450a0a',
+                  color: publishResult.ok ? '#4ade80' : '#f87171',
+                  border: `1px solid ${publishResult.ok ? '#14532d' : '#7f1d1d'}`,
+                }}>
+                  {publishResult.message}
+                </div>
+              )}
+
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
@@ -298,31 +370,57 @@ export default function ToolDetail() {
         </div>
       )}
 
-      {/* Metadata tab */}
-      {activeTab === 'metadata' && (
-        <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <button onClick={saveMetadata} disabled={saving} style={saveBtnStyle}>
-              {saving ? 'Saving...' : 'Save Metadata'}
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {Object.entries(editMeta).map(([key, val]) => (
-              <div key={key}>
-                <label style={{ display: 'block', fontSize: 11, color: colors.dim, marginBottom: 3, fontWeight: 500 }}>
-                  {key.replace(/_/g, ' ')}
-                </label>
+      {/* Newsletter tab */}
+      {activeTab === 'newsletter' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Newsletter settings (duplicated for quick access) */}
+          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Newsletter Settings</h3>
+              <button onClick={saveNewsletter} disabled={saving} style={saveBtnStyle}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={labelStyle}>Status</label>
+                <select value={nlStatus} onChange={(e) => setNlStatus(e.target.value)} style={selectStyle}>
+                  {NEWSLETTER_STATUSES.map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Priority (0-10)</label>
                 <input
-                  value={val}
-                  onChange={(e) => setEditMeta(prev => ({ ...prev, [key]: e.target.value }))}
-                  style={{
-                    width: '100%', padding: '7px 10px',
-                    border: `1px solid ${colors.border}`, borderRadius: 6,
-                    background: colors.bg, color: colors.text, fontSize: 13, outline: 'none',
-                  }}
+                  type="number" min="0" max="10"
+                  value={nlPriority}
+                  onChange={(e) => setNlPriority(parseInt(e.target.value) || 0)}
+                  style={fieldInputStyle}
                 />
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* Linked issues */}
+          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Linked Newsletter Issues</h3>
+            {linkedIssues.length === 0 ? (
+              <div style={{ padding: 24, textAlign: 'center' }}>
+                <p style={{ color: colors.dim, fontSize: 13 }}>This tool hasn't been featured in a newsletter yet.</p>
+              </div>
+            ) : (
+              <DataTable
+                columns={[
+                  { key: 'issue_number', label: 'Issue', width: 80, render: (v) => <span style={{ fontWeight: 500 }}>#{v}</span> },
+                  { key: 'newsletter_topics', label: 'Topic', render: (v) => <span style={{ color: colors.muted, fontSize: 13 }}>{v?.topic || '-'}</span> },
+                  { key: 'status', label: 'Status', width: 100, render: (v) => <StatusBadge status={v || 'draft'} small /> },
+                  { key: 'sent_at', label: 'Sent', width: 110, render: (v) => <span style={{ color: colors.dim, fontSize: 12 }}>{v ? timeAgo(v) : '-'}</span> },
+                ]}
+                data={linkedIssues}
+                emptyMessage="No linked issues."
+              />
+            )}
           </div>
         </div>
       )}
@@ -411,4 +509,20 @@ const actionBtnStyle = {
 const saveBtnStyle = {
   padding: '6px 14px', border: '1px solid #3b82f6', borderRadius: 6,
   background: '#3b82f6', color: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+};
+
+const labelStyle = {
+  display: 'block', fontSize: 11, color: colors.dim, marginBottom: 3, fontWeight: 500,
+};
+
+const selectStyle = {
+  width: '100%', padding: '7px 10px',
+  border: `1px solid ${colors.border}`, borderRadius: 6,
+  background: colors.bg, color: colors.text, fontSize: 13, outline: 'none',
+};
+
+const fieldInputStyle = {
+  width: '100%', padding: '7px 10px',
+  border: `1px solid ${colors.border}`, borderRadius: 6,
+  background: colors.bg, color: colors.text, fontSize: 13, outline: 'none',
 };

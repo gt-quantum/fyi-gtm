@@ -181,6 +181,8 @@ export default function AgentDetail() {
   const [toggling, setToggling] = useState(false);
   const [configKeys, setConfigKeys] = useState([]);
   const [configLoading, setConfigLoading] = useState(false);
+  const [metadata, setMetadata] = useState(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
 
   const uniqueSteps = useMemo(() => deduplicateSteps(rawSteps), [rawSteps]);
 
@@ -222,18 +224,24 @@ export default function AgentDetail() {
     fetchSteps();
   }, [selectedExecution]);
 
-  // Fetch config when tab switches to configuration
+  // Fetch config and metadata when tab switches to configuration
   useEffect(() => {
     if (activeTab !== 'configuration' || !automationId) return;
     async function fetchConfig() {
       setConfigLoading(true);
+      setMetadataLoading(true);
       try {
-        const res = await fetch(`/api/config/scope/${automationId}`);
-        if (res.ok) setConfigKeys(await res.json());
+        const [configRes, metaRes] = await Promise.all([
+          fetch(`/api/config/scope/${automationId}`),
+          fetch(`/api/automations/${automationId}/metadata`),
+        ]);
+        if (configRes.ok) setConfigKeys(await configRes.json());
+        if (metaRes.ok) setMetadata(await metaRes.json());
       } catch (err) {
         console.error('Failed to load config:', err);
       }
       setConfigLoading(false);
+      setMetadataLoading(false);
     }
     fetchConfig();
   }, [activeTab, automationId]);
@@ -574,24 +582,67 @@ export default function AgentDetail() {
 
       {/* Configuration Tab */}
       {activeTab === 'configuration' && (
-        <Section title="Configuration">
-          {configLoading ? (
+        <>
+          {(configLoading || metadataLoading) ? (
             <p style={{ color: colors.dim, fontSize: 13 }}>Loading configuration...</p>
-          ) : configKeys.length === 0 ? (
-            <div style={{ padding: 32, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-              <p style={{ color: colors.dim }}>No configuration keys</p>
-              <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>
-                Config keys scoped to <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>{automationId}</code> or <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>_global</code> will appear here.
-              </p>
-            </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {configKeys.map(cfg => (
-                <ConfigRow key={`${cfg.scope}:${cfg.key}`} cfg={cfg} onSave={handleConfigSave} />
-              ))}
-            </div>
+            <>
+              {/* Operational Parameters */}
+              <Section title="Operational Parameters">
+                {metadata?.operationalParams && Object.keys(metadata.operationalParams).length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+                    {Object.entries(metadata.operationalParams).map(([key, val]) => (
+                      <div key={key} style={{
+                        padding: '10px 14px', background: colors.surface, borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                      }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: colors.dim, marginBottom: 4 }}>
+                          {key.replace(/_/g, ' ')}
+                        </div>
+                        <div style={{ fontSize: 13, color: colors.text, fontFamily: "'IBM Plex Mono', monospace" }}>
+                          {String(val)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: colors.dim, fontSize: 13 }}>No operational parameters exported by this agent.</p>
+                )}
+              </Section>
+
+              {/* Configuration Keys */}
+              <Section title="Configuration Keys">
+                {configKeys.length === 0 ? (
+                  <div style={{ padding: 32, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
+                    <p style={{ color: colors.dim }}>No configuration keys</p>
+                    <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>
+                      Config keys scoped to <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>{automationId}</code> or <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>_global</code> will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {configKeys.map(cfg => (
+                      <ConfigRow key={`${cfg.scope}:${cfg.key}`} cfg={cfg} onSave={handleConfigSave} />
+                    ))}
+                  </div>
+                )}
+              </Section>
+
+              {/* Agent Prompts */}
+              <Section title="Agent Prompts">
+                {metadata?.prompts && Object.keys(metadata.prompts).length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {Object.entries(metadata.prompts).map(([key, val]) => (
+                      <PromptBlock key={key} name={key} content={val} />
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: colors.dim, fontSize: 13 }}>No prompts exported by this agent.</p>
+                )}
+              </Section>
+            </>
           )}
-        </Section>
+        </>
       )}
     </Layout>
   );
@@ -668,6 +719,33 @@ function Section({ title, children }) {
         <div style={{ flex: 1, height: 1, background: colors.border }} />
       </div>
       {children}
+    </div>
+  );
+}
+
+function PromptBlock({ name, content }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: expanded ? `1px solid ${colors.border}` : 'none',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{name.replace(/_/g, ' ')}</span>
+        <span style={{ fontSize: 11, color: colors.dim }}>{expanded ? 'Collapse' : 'Expand'}</span>
+      </div>
+      {expanded && (
+        <pre style={{
+          padding: 14, margin: 0, fontSize: 12, lineHeight: 1.6,
+          color: colors.muted, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          fontFamily: "'IBM Plex Mono', monospace", maxHeight: 400, overflow: 'auto',
+        }}>
+          {content}
+        </pre>
+      )}
     </div>
   );
 }

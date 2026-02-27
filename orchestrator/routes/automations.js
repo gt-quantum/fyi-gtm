@@ -89,6 +89,17 @@ router.put('/:id(*)', async (req, res) => {
   res.json(data);
 });
 
+// GET /api/automations/:id/metadata — Return prompts + operational params
+router.get('/:id(*)/metadata', (req, res) => {
+  const automations = req.app.locals.automations || [];
+  const auto = automations.find(a => a.id === req.params.id);
+  if (!auto) return res.status(404).json({ error: 'Not found' });
+  res.json({
+    prompts: auto._module?.prompts || {},
+    operationalParams: auto._module?.operationalParams || {},
+  });
+});
+
 // POST /api/automations/:id/trigger — Manually trigger
 router.post('/:id(*)/trigger', async (req, res) => {
   const id = req.params.id;

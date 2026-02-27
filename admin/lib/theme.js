@@ -29,6 +29,12 @@ export const statusColors = {
   approved: { bg: '#1e3a5f', text: '#60a5fa' },
   active: { bg: '#052e16', text: '#4ade80' },
   paused: { bg: '#422006', text: '#fbbf24' },
+  none: { bg: '#1a1a1a', text: '#71717a' },
+  scheduled: { bg: '#1e3a5f', text: '#60a5fa' },
+  sent: { bg: '#052e16', text: '#4ade80' },
+  'no entry': { bg: '#1a1a1a', text: '#71717a' },
+  agent: { bg: '#2e1065', text: '#c084fc' },
+  railway: { bg: '#1e3a5f', text: '#60a5fa' },
 };
 
 export const typeColors = {

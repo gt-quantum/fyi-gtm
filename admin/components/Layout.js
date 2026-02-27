@@ -10,10 +10,9 @@ const navGroups = [
     ],
   },
   {
-    label: 'Directory',
+    label: 'Tools',
     items: [
-      { href: '/tools', label: 'Tools', icon: 'wrench' },
-      { href: '/directory', label: 'Entries', icon: 'file' },
+      { href: '/tools', label: 'All Tools', icon: 'wrench' },
     ],
   },
   {

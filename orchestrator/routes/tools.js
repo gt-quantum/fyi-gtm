@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
 
   let query = supabase
     .from('tools')
-    .select('id, name, slug, url, research_status, category, primary_category, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority')
+    .select('id, name, slug, url, research_status, category, primary_category, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority, tags, company_size, ai_automation')
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
 
@@ -19,7 +19,23 @@ router.get('/', async (req, res) => {
 
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  // Merge entry_status from directory_entries
+  const { data: entries } = await supabase
+    .from('directory_entries')
+    .select('id, tool_id, status');
+
+  const entryMap = {};
+  if (entries) {
+    entries.forEach(e => { entryMap[e.tool_id] = e.status; });
+  }
+
+  const merged = data.map(t => ({
+    ...t,
+    entry_status: entryMap[t.id] || null,
+  }));
+
+  res.json(merged);
 });
 
 // Get single tool (all fields)
