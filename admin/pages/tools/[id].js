@@ -11,6 +11,7 @@ import {
   PRICING_TAGS, COMPANY_SIZE_TAGS, GROUP_COLORS,
   getCategoryLabel, getGroupLabel, getGroupForCategory, getCategoriesForGroup,
 } from '../../lib/taxonomy';
+import { NEWSLETTER_STATUSES } from '../../lib/statuses';
 
 const tabs = [
   { key: 'overview', label: 'Overview' },
@@ -18,8 +19,6 @@ const tabs = [
   { key: 'directory', label: 'Directory Entry' },
   { key: 'newsletter', label: 'Newsletter' },
 ];
-
-const NEWSLETTER_STATUSES = ['none', 'queued', 'scheduled', 'sent'];
 
 function arraysEqual(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b)) return a === b;
@@ -630,7 +629,7 @@ export default function ToolDetail() {
                 <label style={labelStyle}>Newsletter Status</label>
                 <select value={nlStatus} onChange={(e) => setNlStatus(e.target.value)} style={selectStyle}>
                   {NEWSLETTER_STATUSES.map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
               </div>
@@ -738,7 +737,7 @@ export default function ToolDetail() {
                 <label style={labelStyle}>Status</label>
                 <select value={nlStatus} onChange={(e) => setNlStatus(e.target.value)} style={selectStyle}>
                   {NEWSLETTER_STATUSES.map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
               </div>

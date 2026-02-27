@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import FormModal, { FormField, inputStyle } from '../components/FormModal';
 import { colors, timeAgo } from '../lib/theme';
 import { GROUPS, getGroupLabel, GROUP_COLORS } from '../lib/taxonomy';
+import { RESEARCH_STATUSES, ENTRY_FILTER_STATUSES, NEWSLETTER_STATUSES } from '../lib/statuses';
 
 export default function Tools() {
   const router = useRouter();
@@ -218,34 +219,19 @@ export default function Tools() {
           label="Research"
           selected={researchFilters}
           onChange={setResearchFilters}
-          options={[
-            { value: 'queued', label: 'Queued', count: counts.research.queued },
-            { value: 'researching', label: 'Researching', count: counts.research.researching },
-            { value: 'complete', label: 'Complete', count: counts.research.complete },
-            { value: 'failed', label: 'Failed', count: counts.research.failed },
-          ]}
+          options={RESEARCH_STATUSES.map(s => ({ ...s, count: counts.research[s.value] }))}
         />
         <MultiSelectDropdown
           label="Entry"
           selected={entryFilters}
           onChange={setEntryFilters}
-          options={[
-            { value: 'published', label: 'Published', count: counts.entry.published },
-            { value: 'staged', label: 'Staged', count: counts.entry.staged },
-            { value: 'draft', label: 'Draft', count: counts.entry.draft },
-            { value: 'no_entry', label: 'No Entry', count: counts.entry.no_entry },
-          ]}
+          options={ENTRY_FILTER_STATUSES.map(s => ({ ...s, count: counts.entry[s.value] }))}
         />
         <MultiSelectDropdown
           label="Newsletter"
           selected={newsletterFilters}
           onChange={setNewsletterFilters}
-          options={[
-            { value: 'none', label: 'None', count: counts.newsletter.none },
-            { value: 'queued', label: 'Queued', count: counts.newsletter.queued },
-            { value: 'scheduled', label: 'Scheduled', count: counts.newsletter.scheduled },
-            { value: 'sent', label: 'Sent', count: counts.newsletter.sent },
-          ]}
+          options={NEWSLETTER_STATUSES.map(s => ({ ...s, count: counts.newsletter[s.value] }))}
         />
         <MultiSelectDropdown
           label="Group"
