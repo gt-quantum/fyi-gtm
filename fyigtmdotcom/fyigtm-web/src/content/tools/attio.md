@@ -1,5 +1,5 @@
 ---
-name: "Attio: The next gen of CRM"
+name: "Attio"
 description: "AI-native CRM with extreme customization and modular design for modern startups and growing businesses."
 url: "https://attio.com/"
 primaryCategory: "crm"
@@ -22,7 +22,7 @@ isDiscontinued: false
 logo: "https://www.google.com/s2/favicons?domain=attio.com&sz=128"
 ---
 
-## What is Attio: The next gen of CRM?
+## What is Attio?
 
 Attio is a modern, AI-native CRM platform that reimagines customer relationship management with extreme flexibility and intuitive design. Built from the ground up for today's agile businesses, it offers a modular, no-code approach to tracking leads and managing relationships while promising to adapt to any business's unique operational reality rather than forcing companies into rigid templates.
 

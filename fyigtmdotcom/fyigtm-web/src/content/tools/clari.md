@@ -1,27 +1,21 @@
 ---
+name: "Clari"
+description: "AI-powered revenue orchestration platform that provides predictive forecasting and pipeline management for enterprise sales teams"
 url: "https://www.clari.com/"
 logo: "https://www.google.com/s2/favicons?domain=clari.com&sz=128"
-name: "Enterprise Revenue Orchestration"
-slug: "enterprise-revenue-orchestration"
-group: "revenue-operations"
-isNew: true
-pricing: "enterprise"
-featured: false
-priceNote: "Custom enterprise pricing based on team size and complexity"
+primaryCategory: "pipeline-forecasting"
 categories:
   - "pipeline-forecasting"
   - "revenue-analytics-attribution"
   - "ai-revops-tools"
   - "sales-enablement"
+aiAutomation:
+  - "ai-native"
+pricingTags:
+  - "enterprise-pricing"
 companySize:
   - "mid-market"
   - "enterprise"
-description: "AI-powered revenue orchestration platform that provides predictive forecasting and pipeline management for enterprise sales teams"
-pricingTags:
-  - "enterprise-pricing"
-publishedAt: "2026-02-06"
-aiAutomation:
-  - "ai-native"
 integrations:
   - "salesforce"
   - "hubspot"
@@ -30,7 +24,11 @@ integrations:
   - "zoom"
   - "gong"
   - "chorus"
-primaryCategory: "pipeline-forecasting"
+pricing: "enterprise"
+priceNote: "Custom enterprise pricing based on team size and complexity"
+featured: false
+publishedAt: 2026-02-06
+isNew: true
 ---
 
 ## What is Enterprise Revenue Orchestration?
