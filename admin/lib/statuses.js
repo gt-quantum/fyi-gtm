@@ -1,5 +1,6 @@
 // Canonical status values — must match Postgres CHECK constraints
-// tools.research_status CHECK (queued, researching, complete, failed)
+// tools.research_status CHECK (queued, researching, researched, analyzing, complete, failed)
+// tools.analysis_status CHECK (pending, queued, analyzing, complete, failed)
 // tools.newsletter_status CHECK (none, queued, scheduled, sent)
 // directory_entries.status CHECK (draft, staged, approved, published)
 // newsletter_issues.status CHECK (draft, scheduled, sent, failed)
@@ -7,6 +8,8 @@
 export const RESEARCH_STATUSES = [
   { value: 'queued', label: 'Queued' },
   { value: 'researching', label: 'Researching' },
+  { value: 'researched', label: 'Researched' },
+  { value: 'analyzing', label: 'Analyzing' },
   { value: 'complete', label: 'Complete' },
   { value: 'failed', label: 'Failed' },
 ];

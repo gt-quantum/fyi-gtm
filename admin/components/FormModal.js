@@ -41,11 +41,11 @@ export default function FormModal({ title, onClose, onSubmit, children, submitLa
   );
 }
 
-export function FormField({ label, children }) {
+export function FormField({ label, required, children }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <label style={{ display: 'block', fontSize: 12, color: colors.dim, marginBottom: 4, fontWeight: 500 }}>
-        {label}
+        {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
       </label>
       {children}
     </div>

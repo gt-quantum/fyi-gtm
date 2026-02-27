@@ -16,6 +16,7 @@ export default function Tools() {
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [publishing, setPublishing] = useState(false);
@@ -41,22 +42,33 @@ export default function Tools() {
   useEffect(() => { loadTools(); }, []);
 
   async function addTool() {
-    if (!newName || !newUrl) return;
+    const missing = [];
+    if (!newName.trim()) missing.push('Tool Name');
+    if (!newUrl.trim()) missing.push('Website URL');
+    if (missing.length) {
+      setAddError(`${missing.join(' and ')} required`);
+      return;
+    }
+    setAddError('');
     setAdding(true);
     try {
       const res = await fetch('/api/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, url: newUrl })
+        body: JSON.stringify({ name: newName.trim(), url: newUrl.trim() })
       });
       if (res.ok) {
         setNewName('');
         setNewUrl('');
+        setAddError('');
         setShowAdd(false);
         loadTools();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAddError(data.error || 'Failed to add tool');
       }
     } catch (err) {
-      alert('Failed to add tool');
+      setAddError('Failed to add tool');
     }
     setAdding(false);
   }
@@ -272,16 +284,21 @@ export default function Tools() {
       {showAdd && (
         <FormModal
           title="Add Tool"
-          onClose={() => setShowAdd(false)}
+          onClose={() => { setShowAdd(false); setAddError(''); }}
           onSubmit={addTool}
           submitLabel="Add to Queue"
           submitting={adding}
         >
-          <FormField label="Tool Name">
-            <input style={inputStyle} placeholder="e.g. Warmly AI" value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus />
+          {addError && (
+            <div style={{ padding: '8px 12px', marginBottom: 12, borderRadius: 6, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 13 }}>
+              {addError}
+            </div>
+          )}
+          <FormField label="Tool Name" required>
+            <input style={{...inputStyle, borderColor: addError && !newName.trim() ? '#ef4444' : undefined}} placeholder="e.g. Warmly AI" value={newName} onChange={(e) => { setNewName(e.target.value); setAddError(''); }} autoFocus />
           </FormField>
-          <FormField label="Website URL">
-            <input style={inputStyle} placeholder="e.g. https://www.warmly.ai" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} />
+          <FormField label="Website URL" required>
+            <input style={{...inputStyle, borderColor: addError && !newUrl.trim() ? '#ef4444' : undefined}} placeholder="e.g. https://www.warmly.ai" value={newUrl} onChange={(e) => { setNewUrl(e.target.value); setAddError(''); }} />
           </FormField>
         </FormModal>
       )}

@@ -381,9 +381,13 @@ export default function ToolDetail() {
     try {
       const res = await fetch(`/api/tools/${id}/research`, { method: 'POST' });
       const data = await res.json();
-      if (data.success) setTool(prev => ({ ...prev, research_status: 'researching' }));
+      if (data.success) {
+        setTool(prev => ({ ...prev, research_status: 'researching' }));
+      } else {
+        alert(`Research trigger failed: ${data.error || 'Unknown error'}`);
+      }
     } catch (err) {
-      alert('Failed to trigger research');
+      alert(`Failed to trigger research: ${err.message}`);
     }
     setResearching(false);
   }
@@ -435,13 +439,15 @@ export default function ToolDetail() {
 
       {/* Action bar */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {(tool.research_status === 'queued' || tool.research_status === 'failed' || tool.research_status === 'complete') && (
+        {(['queued', 'failed', 'complete', 'researched'].includes(tool.research_status)) && (
           <button onClick={triggerResearch} disabled={researching} style={actionBtnStyle}>
-            {researching ? 'Starting...' : tool.research_status === 'complete' ? 'Re-Research' : 'Research'}
+            {researching ? 'Starting...' : ['complete', 'researched'].includes(tool.research_status) ? 'Re-Research' : 'Research'}
           </button>
         )}
-        {tool.research_status === 'researching' && (
-          <span style={{ padding: '5px 12px', fontSize: 12, color: colors.warning }}>Research in progress...</span>
+        {(['researching', 'analyzing'].includes(tool.research_status)) && (
+          <span style={{ padding: '5px 12px', fontSize: 12, color: colors.warning }}>
+            {tool.research_status === 'analyzing' ? 'Analysis in progress...' : 'Research in progress...'}
+          </span>
         )}
       </div>
 

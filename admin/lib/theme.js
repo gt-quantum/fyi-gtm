@@ -20,6 +20,8 @@ export const colors = {
 export const statusColors = {
   queued: { bg: '#1e3a5f', text: '#60a5fa' },
   researching: { bg: '#422006', text: '#fbbf24' },
+  researched: { bg: '#1a2e05', text: '#a3e635' },
+  analyzing: { bg: '#2e1065', text: '#c084fc' },
   complete: { bg: '#052e16', text: '#4ade80' },
   failed: { bg: '#450a0a', text: '#f87171' },
   success: { bg: '#052e16', text: '#4ade80' },
