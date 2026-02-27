@@ -1,21 +1,29 @@
 ---
+name: "Vector"
+description: "AI-powered contact-level advertising platform that identifies buyers and creates precise ad audiences from CRM and behavioral data."
 url: "https://www.vector.co/"
 logo: "https://www.google.com/s2/favicons?domain=vector.co&sz=128"
-name: "Vector"
-slug: "vector"
-tags:
-  - "advertising"
-  - "lead-generation"
-  - "crm"
-  - "ai"
-  - "b2b-marketing"
-isNew: true
+
+primaryCategory: "abm-demand-gen"
+categories: ["abm-demand-gen", "intent-signals", "ai-marketing-tools"]
+
+aiAutomation: ["ai-native"]
+pricingTags: ["freemium"]
+companySize: ["smb", "mid-market", "enterprise"]
+integrations: ["salesforce", "hubspot"]
+
 pricing: "freemium"
-category: "Marketing Automation"
-featured: false
-dateAdded: "2026-01-30"
 priceNote: "Free tier available with limited integrations, paid plans for advanced features"
-description: "AI-powered contact-level advertising platform that identifies buyers and creates precise ad audiences from CRM and behavioral data."
+
+featured: false
+publishedAt: 2026-01-30
+isNew: true
+hasDeal: false
+isDiscontinued: false
+
+upvotes: 0
+comments: 0
+views: 0
 ---
 
 ## What is Vector?

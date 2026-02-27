@@ -1,20 +1,29 @@
 ---
+name: "Gong"
+description: "AI-powered revenue intelligence platform that analyzes sales conversations to improve team performance and win rates"
 url: "https://www.gong.io/"
 logo: "https://www.google.com/s2/favicons?domain=gong.io&sz=128"
-name: "Gong"
-slug: "gong"
-tags:
-  - "conversation intelligence"
-  - "sales analytics"
-  - "revenue operations"
-  - "AI coaching"
-isNew: true
-pricing: "paid"
-category: "Sales Intelligence"
-featured: false
-dateAdded: "2026-01-30"
+
+primaryCategory: "sales-engagement"
+categories: ["sales-engagement", "revenue-analytics-attribution", "ai-sales-assistants"]
+
+aiAutomation: ["ai-native"]
+pricingTags: ["enterprise-pricing"]
+companySize: ["mid-market", "enterprise"]
+integrations: ["salesforce", "hubspot", "zoom", "slack", "microsoft-teams", "outreach", "salesloft"]
+
+pricing: "enterprise"
 priceNote: "$108-250/month per user, annual commitment required"
-description: "AI-powered revenue intelligence platform that analyzes sales conversations to improve team performance and win rates"
+
+featured: false
+publishedAt: 2026-01-30
+isNew: true
+hasDeal: false
+isDiscontinued: false
+
+upvotes: 0
+comments: 0
+views: 0
 ---
 
 ## What is Gong?
