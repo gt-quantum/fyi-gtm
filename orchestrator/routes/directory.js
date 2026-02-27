@@ -1,6 +1,6 @@
 const express = require('express');
 const { supabase } = require('../../shared/clients/supabase');
-const { generateMarkdownFile, getToolFilePath } = require('../../shared/utils/markdown');
+const { generateMarkdownFile, getToolFilePath, validateFrontmatter } = require('../../shared/utils/markdown');
 const { batchCommit } = require('../../shared/clients/github');
 
 const router = express.Router();
@@ -56,7 +56,9 @@ router.put('/:id', async (req, res) => {
   res.json(data);
 });
 
-// POST /api/directory/publish — Bulk publish approved entries to GitHub
+// POST /api/directory/publish — Bulk publish entries to GitHub
+// Validates every entry's frontmatter against Astro schema before pushing.
+// Rejects the entire batch if ANY entry fails validation.
 router.post('/publish', async (req, res) => {
   const { entryIds } = req.body;
   if (!Array.isArray(entryIds) || entryIds.length === 0) {
@@ -75,14 +77,51 @@ router.post('/publish', async (req, res) => {
       return res.status(404).json({ error: 'No entries found' });
     }
 
-    // Generate markdown files
-    const files = [];
+    // Validate ALL entries before publishing any
+    const validationErrors = [];
+    const validEntries = [];
+
     for (const entry of entries) {
-      if (!entry.frontmatter || !entry.content || !entry.tools?.slug) {
-        console.warn(`[directory] Skipping entry ${entry.id}: missing frontmatter/content/slug`);
+      const toolName = entry.tools?.name || entry.id;
+      const slug = entry.tools?.slug;
+
+      if (!entry.frontmatter || !entry.content || !slug) {
+        validationErrors.push({
+          tool: toolName,
+          errors: ['Missing frontmatter, content, or slug'],
+        });
         continue;
       }
 
+      const validation = validateFrontmatter(entry.frontmatter);
+      if (!validation.valid) {
+        validationErrors.push({
+          tool: toolName,
+          slug,
+          errors: validation.errors,
+        });
+      } else {
+        validEntries.push(entry);
+      }
+    }
+
+    // If ANY entry fails validation, reject the entire batch
+    if (validationErrors.length > 0) {
+      console.error('[directory] Publish blocked — frontmatter validation failed:');
+      validationErrors.forEach(e => {
+        console.error(`  ${e.tool}: ${e.errors.join('; ')}`);
+      });
+
+      return res.status(400).json({
+        error: 'Frontmatter validation failed — publish blocked to prevent broken Astro builds',
+        failures: validationErrors,
+        hint: 'Fix the frontmatter in these directory entries before publishing. Required fields: name, description, url, primaryCategory, categories, publishedAt',
+      });
+    }
+
+    // Generate markdown files (sanitizeFrontmatter runs inside generateMarkdownFile)
+    const files = [];
+    for (const entry of validEntries) {
       const markdown = generateMarkdownFile(entry.frontmatter, entry.content);
       const path = getToolFilePath(entry.tools.slug);
       files.push({ path, content: markdown });
@@ -103,13 +142,13 @@ router.post('/publish', async (req, res) => {
     await supabase
       .from('directory_entries')
       .update({ status: 'published', updated_at: new Date().toISOString() })
-      .in('id', entries.map(e => e.id));
+      .in('id', validEntries.map(e => e.id));
 
     res.json({
       success: true,
       published: files.length,
       commitSha: result.sha,
-      commitUrl: result.url
+      commitUrl: result.url,
     });
   } catch (err) {
     console.error('[directory] Publish failed:', err.message);
