@@ -76,8 +76,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const allowedFields = [
     'name', 'slug', 'url', 'research_status', 'category', 'primary_category',
-    'pricing', 'screenshot_url', 'group_category', 'tags', 'integrations',
-    'company_size', 'ai_automation', 'one_liner', 'description',
+    'pricing', 'screenshot_url', 'group_category', 'group_name', 'tags', 'integrations',
+    'company_size', 'ai_automation', 'one_liner', 'description', 'summary',
+    'price_note', 'pricing_tags', 'categories',
     'newsletter_status', 'newsletter_priority', 'featured_in_issue_id'
   ];
 

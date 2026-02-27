@@ -6,12 +6,17 @@ import TabBar from '../../components/TabBar';
 import StatusBadge from '../../components/StatusBadge';
 import DataTable from '../../components/DataTable';
 import { colors, timeAgo } from '../../lib/theme';
+import {
+  GROUPS, CATEGORIES, PRICING_OPTIONS, AI_AUTOMATION_TAGS,
+  PRICING_TAGS, COMPANY_SIZE_TAGS, GROUP_COLORS,
+  getCategoryLabel, getGroupLabel, getGroupForCategory, getCategoriesForGroup,
+} from '../../lib/taxonomy';
 
 const tabs = [
   { key: 'overview', label: 'Overview' },
+  { key: 'research', label: 'Research Data' },
   { key: 'directory', label: 'Directory Entry' },
   { key: 'newsletter', label: 'Newsletter' },
-  { key: 'research', label: 'Research Data' },
 ];
 
 const NEWSLETTER_STATUSES = ['none', 'queued', 'scheduled', 'sent'];
@@ -31,9 +36,19 @@ export default function ToolDetail() {
   const [publishingEntry, setPublishingEntry] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
 
-  // Editable fields
+  // Editable classification fields
   const [editContent, setEditContent] = useState('');
-  const [editMeta, setEditMeta] = useState({});
+  const [primaryCategory, setPrimaryCategory] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [pricing, setPricing] = useState('');
+  const [summary, setSummary] = useState('');
+  const [oneLiner, setOneLiner] = useState('');
+  const [priceNote, setPriceNote] = useState('');
+  const [companySize, setCompanySize] = useState([]);
+  const [aiAutomation, setAiAutomation] = useState([]);
+  const [pricingTags, setPricingTags] = useState([]);
+  const [tags, setTags] = useState('');
+  const [integrations, setIntegrations] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -49,19 +64,17 @@ export default function ToolDetail() {
       setTool(data);
       setNlStatus(data.newsletter_status || 'none');
       setNlPriority(data.newsletter_priority || 0);
-      setEditMeta({
-        primary_category: data.primary_category || '',
-        category: data.category || '',
-        pricing: data.pricing || '',
-        tags: Array.isArray(data.tags) ? data.tags.join(', ') : '',
-        integrations: Array.isArray(data.integrations) ? data.integrations.join(', ') : '',
-        company_size: Array.isArray(data.company_size) ? data.company_size.join(', ') : '',
-        ai_automation: Array.isArray(data.ai_automation) ? data.ai_automation.join(', ') : '',
-        one_liner: data.one_liner || '',
-        group_category: data.group_category || '',
-        summary: data.summary || '',
-        price_note: data.price_note || '',
-      });
+      setPrimaryCategory(data.primary_category || '');
+      setGroupName(data.group_name || '');
+      setPricing(data.pricing || '');
+      setSummary(data.summary || '');
+      setOneLiner(data.one_liner || '');
+      setPriceNote(data.price_note || '');
+      setCompanySize(Array.isArray(data.company_size) ? data.company_size : []);
+      setAiAutomation(Array.isArray(data.ai_automation) ? data.ai_automation : []);
+      setPricingTags(Array.isArray(data.pricing_tags) ? data.pricing_tags : []);
+      setTags(Array.isArray(data.tags) ? data.tags.join(', ') : '');
+      setIntegrations(Array.isArray(data.integrations) ? data.integrations.join(', ') : '');
 
       // Load directory entry
       const dirRes = await fetch('/api/directory');
@@ -90,19 +103,32 @@ export default function ToolDetail() {
     setLoading(false);
   }
 
-  async function saveMetadata() {
+  // Auto-set group when primary category changes
+  function handlePrimaryCategoryChange(val) {
+    setPrimaryCategory(val);
+    if (val) {
+      const inferredGroup = getGroupForCategory(val);
+      if (inferredGroup) setGroupName(inferredGroup);
+    }
+  }
+
+  function toggleMulti(arr, setArr, val) {
+    if (arr.includes(val)) setArr(arr.filter(v => v !== val));
+    else setArr([...arr, val]);
+  }
+
+  async function saveClassification() {
     setSaving(true);
     try {
       const body = {
-        primary_category: editMeta.primary_category,
-        category: editMeta.category,
-        pricing: editMeta.pricing,
-        group_category: editMeta.group_category,
-        one_liner: editMeta.one_liner,
-        ai_automation: editMeta.ai_automation ? editMeta.ai_automation.split(',').map(s => s.trim()).filter(Boolean) : [],
-        tags: editMeta.tags ? editMeta.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
-        integrations: editMeta.integrations ? editMeta.integrations.split(',').map(s => s.trim()).filter(Boolean) : [],
-        company_size: editMeta.company_size ? editMeta.company_size.split(',').map(s => s.trim()).filter(Boolean) : [],
+        primary_category: primaryCategory || null,
+        group_category: groupName || null,
+        pricing: pricing || null,
+        one_liner: oneLiner || null,
+        ai_automation: aiAutomation,
+        company_size: companySize,
+        tags: tags ? tags.split(',').map(s => s.trim()).filter(Boolean) : [],
+        integrations: integrations ? integrations.split(',').map(s => s.trim()).filter(Boolean) : [],
       };
       const res = await fetch(`/api/tools/${id}`, {
         method: 'PUT',
@@ -196,6 +222,11 @@ export default function ToolDetail() {
   if (loading) return <Layout><p style={{ color: colors.dim, marginTop: 40 }}>Loading...</p></Layout>;
   if (!tool) return <Layout><p style={{ color: colors.error, marginTop: 40 }}>Tool not found</p></Layout>;
 
+  // Filtered categories based on selected group
+  const filteredCategories = groupName
+    ? getCategoriesForGroup(groupName)
+    : CATEGORIES;
+
   return (
     <Layout>
       {/* Back link */}
@@ -214,6 +245,9 @@ export default function ToolDetail() {
           </a>
         )}
       </div>
+      {tool.summary && (
+        <p style={{ color: colors.muted, fontSize: 13, marginBottom: 8, lineHeight: 1.5 }}>{tool.summary}</p>
+      )}
 
       {/* Action bar */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
@@ -229,7 +263,7 @@ export default function ToolDetail() {
 
       <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
-      {/* Overview tab — Pipeline + Classification */}
+      {/* ===== OVERVIEW TAB ===== */}
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Pipeline stages */}
@@ -238,7 +272,7 @@ export default function ToolDetail() {
               label="Research"
               status={tool.research_status}
               statusColor={tool.research_status === 'complete' ? '#22c55e' : tool.research_status === 'researching' ? '#f59e0b' : tool.research_status === 'failed' ? '#ef4444' : colors.dim}
-              detail={tool.research_data?.generated_at ? `Completed ${new Date(tool.research_data.generated_at).toLocaleDateString()}` : null}
+              detail={tool.research_completed_at ? `Completed ${new Date(tool.research_completed_at).toLocaleDateString()}` : null}
             />
             <PipelineStage
               label="Directory"
@@ -254,6 +288,106 @@ export default function ToolDetail() {
             />
           </div>
 
+          {/* Classification */}
+          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Classification</h3>
+              <button onClick={saveClassification} disabled={saving} style={saveBtnStyle}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+
+            {/* Group + Primary Category (linked dropdowns) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Group</label>
+                <select value={groupName} onChange={(e) => { setGroupName(e.target.value); setPrimaryCategory(''); }} style={selectStyle}>
+                  <option value="">— Select group —</option>
+                  {GROUPS.map(g => (
+                    <option key={g.value} value={g.value}>{g.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Primary Category</label>
+                <select value={primaryCategory} onChange={(e) => handlePrimaryCategoryChange(e.target.value)} style={selectStyle}>
+                  <option value="">— Select category —</option>
+                  {filteredCategories.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Pricing + Price Note */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Pricing</label>
+                <select value={pricing} onChange={(e) => setPricing(e.target.value)} style={selectStyle}>
+                  <option value="">— Select —</option>
+                  {PRICING_OPTIONS.map(p => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Price Note</label>
+                <input value={priceNote} onChange={(e) => setPriceNote(e.target.value)} placeholder="e.g. Starts at $49/mo" style={fieldInputStyle} />
+              </div>
+            </div>
+
+            {/* Company Size (multi-select chips) */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Company Size</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {COMPANY_SIZE_TAGS.map(t => (
+                  <ChipToggle key={t.value} label={t.label} active={companySize.includes(t.value)}
+                    onClick={() => toggleMulti(companySize, setCompanySize, t.value)} />
+                ))}
+              </div>
+            </div>
+
+            {/* AI/Automation (multi-select chips) */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>AI / Automation</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {AI_AUTOMATION_TAGS.map(t => (
+                  <ChipToggle key={t.value} label={t.label} active={aiAutomation.includes(t.value)}
+                    onClick={() => toggleMulti(aiAutomation, setAiAutomation, t.value)} />
+                ))}
+              </div>
+            </div>
+
+            {/* Pricing Tags (multi-select chips) */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Pricing Tags</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {PRICING_TAGS.map(t => (
+                  <ChipToggle key={t.value} label={t.label} active={pricingTags.includes(t.value)}
+                    onClick={() => toggleMulti(pricingTags, setPricingTags, t.value)} />
+                ))}
+              </div>
+            </div>
+
+            {/* One-liner */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>One-Liner</label>
+              <input value={oneLiner} onChange={(e) => setOneLiner(e.target.value)} placeholder="Short description of the tool" style={fieldInputStyle} />
+            </div>
+
+            {/* Tags + Integrations (comma-separated) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={labelStyle}>Tags (comma-separated)</label>
+                <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. lead-gen, ai, crm" style={fieldInputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Integrations (comma-separated)</label>
+                <input value={integrations} onChange={(e) => setIntegrations(e.target.value)} placeholder="e.g. hubspot, salesforce, slack" style={fieldInputStyle} />
+              </div>
+            </div>
+          </div>
+
           {/* Newsletter settings */}
           <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -265,11 +399,7 @@ export default function ToolDetail() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={labelStyle}>Newsletter Status</label>
-                <select
-                  value={nlStatus}
-                  onChange={(e) => setNlStatus(e.target.value)}
-                  style={selectStyle}
-                >
+                <select value={nlStatus} onChange={(e) => setNlStatus(e.target.value)} style={selectStyle}>
                   {NEWSLETTER_STATUSES.map(s => (
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
@@ -286,32 +416,34 @@ export default function ToolDetail() {
               </div>
             </div>
           </div>
-
-          {/* Classification fields */}
-          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Classification</h3>
-              <button onClick={saveMetadata} disabled={saving} style={saveBtnStyle}>
-                {saving ? 'Saving...' : 'Save Metadata'}
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {Object.entries(editMeta).map(([key, val]) => (
-                <div key={key}>
-                  <label style={labelStyle}>{key.replace(/_/g, ' ')}</label>
-                  <input
-                    value={val}
-                    onChange={(e) => setEditMeta(prev => ({ ...prev, [key]: e.target.value }))}
-                    style={fieldInputStyle}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
-      {/* Directory Entry tab */}
+      {/* ===== RESEARCH DATA TAB ===== */}
+      {activeTab === 'research' && (
+        <div>
+          {tool.website_data || tool.research_blob ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {tool.website_data && (
+                <JsonViewer title="Scraped Website Data" data={tool.website_data} />
+              )}
+              {tool.research_blob && (
+                <TextViewer title="AI Research Summary" text={tool.research_blob} />
+              )}
+              {tool.review_data && (
+                <JsonViewer title="Review Data & Citations" data={tool.review_data} />
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: 40, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
+              <p style={{ color: colors.dim }}>No research data available.</p>
+              <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>Trigger research to populate this tab.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== DIRECTORY ENTRY TAB ===== */}
       {activeTab === 'directory' && (
         <div>
           {entry ? (
@@ -370,10 +502,10 @@ export default function ToolDetail() {
         </div>
       )}
 
-      {/* Newsletter tab */}
+      {/* ===== NEWSLETTER TAB ===== */}
       {activeTab === 'newsletter' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Newsletter settings (duplicated for quick access) */}
+          {/* Newsletter settings */}
           <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600 }}>Newsletter Settings</h3>
@@ -424,31 +556,23 @@ export default function ToolDetail() {
           </div>
         </div>
       )}
-
-      {/* Research Data tab */}
-      {activeTab === 'research' && (
-        <div>
-          {tool.research_data ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {tool.research_data.scraped && (
-                <JsonViewer title="Scraped Website Data" data={tool.research_data.scraped} />
-              )}
-              {tool.research_data.haiku_research && (
-                <TextViewer title="AI Research Summary" text={tool.research_data.haiku_research} />
-              )}
-              {tool.research_data.pipeline && (
-                <JsonViewer title="Pipeline Metadata" data={tool.research_data.pipeline} />
-              )}
-            </div>
-          ) : (
-            <div style={{ padding: 40, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-              <p style={{ color: colors.dim }}>No research data available.</p>
-              <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>Trigger research to populate this tab.</p>
-            </div>
-          )}
-        </div>
-      )}
     </Layout>
+  );
+}
+
+// --- Components ---
+
+function ChipToggle({ label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+      border: `1px solid ${active ? '#3b82f6' : colors.border}`,
+      background: active ? '#1e3a5f' : 'transparent',
+      color: active ? '#60a5fa' : colors.dim,
+      transition: 'all 0.15s',
+    }}>
+      {label}
+    </button>
   );
 }
 
@@ -500,6 +624,8 @@ function PipelineStage({ label, status, statusColor, detail }) {
     </div>
   );
 }
+
+// --- Styles ---
 
 const actionBtnStyle = {
   padding: '6px 14px', border: `1px solid ${colors.border}`, borderRadius: 6,
