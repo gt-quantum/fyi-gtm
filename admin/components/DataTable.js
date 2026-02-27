@@ -86,11 +86,11 @@ export default function DataTable({
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
                 {selectable && (
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                  <td style={{ ...tdStyle, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds?.has(row.id) || false}
-                      onChange={(e) => { e.stopPropagation(); onSelect?.(row.id, e.target.checked); }}
+                      onChange={(e) => onSelect?.(row.id, e.target.checked)}
                       style={checkboxStyle}
                     />
                   </td>
