@@ -84,15 +84,17 @@ module.exports = {
   async execute(context) {
     const { executionId, toolId } = context;
 
-    // Load configurable model settings
+    // Load model settings from config.settings (no hardcoded defaults)
     const config = {
-      extractionModel: await getConfig('analyst_extraction_model', 'gpt-4.1-mini'),
-      extractionProvider: await getConfig('analyst_extraction_provider', 'openai'),
-      classificationModel: await getConfig('analyst_classification_model', 'claude-haiku-4-5-20251001'),
-      classificationProvider: await getConfig('analyst_classification_provider', 'anthropic'),
-      summaryModel: await getConfig('analyst_summary_model', 'claude-haiku-4-5-20251001'),
-      summaryProvider: await getConfig('analyst_summary_provider', 'anthropic'),
+      extractionModel: await getConfig('analyst_extraction_model'),
+      extractionProvider: await getConfig('analyst_extraction_provider'),
+      classificationModel: await getConfig('analyst_classification_model'),
+      classificationProvider: await getConfig('analyst_classification_provider'),
+      summaryModel: await getConfig('analyst_summary_model'),
+      summaryProvider: await getConfig('analyst_summary_provider'),
     };
+    const missingConfig = Object.entries(config).filter(([, v]) => !v).map(([k]) => k);
+    if (missingConfig.length) throw new Error(`Missing config.settings: ${missingConfig.join(', ')}`);
 
     // Step 1: Fetch tool with raw_research
     await logStep(executionId, 'fetch_tool', 'started');

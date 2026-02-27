@@ -19,7 +19,7 @@ async function ask(params) {
   const anthropic = getClient();
 
   const response = await anthropic.messages.create({
-    model: params.model || 'claude-haiku-4-5-20250514',
+    model: params.model,
     max_tokens: params.max_tokens || 4096,
     system: params.system || undefined,
     messages: params.messages,

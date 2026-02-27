@@ -19,7 +19,7 @@ async function ask(params) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: params.model || 'sonar',
+      model: params.model,
       messages: [
         ...(params.system ? [{ role: 'system', content: params.system }] : []),
         ...params.messages

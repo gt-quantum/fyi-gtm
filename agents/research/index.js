@@ -82,13 +82,15 @@ module.exports = {
     let processed = 0;
     let failed = 0;
 
-    // Load configurable model settings
+    // Load model settings from config.settings (no hardcoded defaults)
     const config = {
-      mainModel: await getConfig('research_perplexity_main_model', 'sonar-pro'),
-      targetedModel: await getConfig('research_perplexity_targeted_model', 'sonar'),
-      consolidationModel: await getConfig('research_consolidation_model', 'claude-haiku-4-5-20251001'),
-      consolidationProvider: await getConfig('research_consolidation_provider', 'anthropic'),
+      mainModel: await getConfig('research_perplexity_main_model'),
+      targetedModel: await getConfig('research_perplexity_targeted_model'),
+      consolidationModel: await getConfig('research_consolidation_model'),
+      consolidationProvider: await getConfig('research_consolidation_provider'),
     };
+    const missingConfig = Object.entries(config).filter(([, v]) => !v).map(([k]) => k);
+    if (missingConfig.length) throw new Error(`Missing config.settings: ${missingConfig.join(', ')}`);
 
     // Step 1: Fetch queue
     let query = supabase

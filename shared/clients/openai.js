@@ -21,7 +21,7 @@ async function ask(params) {
   messages.push(...params.messages);
 
   const body = {
-    model: params.model || 'gpt-4o-mini',
+    model: params.model,
     messages,
     max_tokens: params.max_tokens || 4096,
     temperature: params.temperature !== undefined ? params.temperature : 0.7
