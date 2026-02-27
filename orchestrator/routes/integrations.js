@@ -1,13 +1,57 @@
 const express = require('express');
-const integrations = require('../../shared/integrations');
+const DEFAULTS = require('../../shared/integrations');
 const { supabase } = require('../../shared/clients/supabase');
+const { configDb } = require('../../shared/clients/supabase');
 
 const router = express.Router();
+
+const SCOPE = 'integrations';
+
+/**
+ * Load integrations from config.settings, merged with static defaults.
+ * DB rows override defaults; new DB-only entries are included too.
+ */
+async function loadIntegrations() {
+  const { data: rows } = await configDb
+    .from('settings')
+    .select('key, value')
+    .eq('scope', SCOPE);
+
+  // Build map of DB overrides (key = integration id, value = JSON)
+  const dbMap = {};
+  if (rows) {
+    rows.forEach(r => {
+      try {
+        dbMap[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value;
+      } catch {
+        // skip malformed
+      }
+    });
+  }
+
+  // Merge: defaults + DB overrides
+  const seen = new Set();
+  const merged = DEFAULTS.map(def => {
+    seen.add(def.id);
+    const override = dbMap[def.id];
+    return override ? { ...def, ...override, id: def.id } : { ...def };
+  });
+
+  // Add DB-only integrations (user-created)
+  Object.entries(dbMap).forEach(([id, data]) => {
+    if (!seen.has(id)) {
+      merged.push({ id, ...data });
+    }
+  });
+
+  return merged;
+}
 
 /**
  * Check which env vars are present (boolean only, never expose values).
  */
 function checkEnvVars(vars) {
+  if (!Array.isArray(vars)) return [];
   return vars.map(name => ({
     name,
     configured: !!process.env[name],
@@ -53,29 +97,82 @@ async function testService(id) {
   }
 }
 
-// GET /api/integrations — List all integrations with status
-router.get('/', (req, res) => {
-  const result = integrations.map(svc => {
-    const envStatus = checkEnvVars(svc.envVars);
-    const allConfigured = envStatus.every(e => e.configured);
-    const anyConfigured = envStatus.some(e => e.configured);
+// GET /api/integrations — List all integrations with live env var status
+router.get('/', async (req, res) => {
+  try {
+    const integrations = await loadIntegrations();
 
-    let status = 'missing';
-    if (allConfigured) status = 'configured';
-    else if (anyConfigured) status = 'partial';
+    const result = integrations.map(svc => {
+      const envStatus = checkEnvVars(svc.envVars);
+      const allConfigured = envStatus.length > 0 && envStatus.every(e => e.configured);
+      const anyConfigured = envStatus.some(e => e.configured);
 
-    return {
-      ...svc,
-      envStatus,
-      status,
-    };
-  });
+      let status = 'missing';
+      if (allConfigured) status = 'configured';
+      else if (anyConfigured) status = 'partial';
+      if (envStatus.length === 0) status = 'no_keys';
 
-  res.json(result);
+      return { ...svc, envStatus, status };
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/integrations — Create or update an integration (save to config.settings)
+router.post('/', async (req, res) => {
+  const { id, name, type, description, envVars, models, defaultModel, testable } = req.body;
+  if (!id || !name) return res.status(400).json({ error: 'id and name are required' });
+
+  const payload = { name, type: type || 'other', description: description || '' };
+  if (envVars) payload.envVars = envVars;
+  if (models) payload.models = models;
+  if (defaultModel) payload.defaultModel = defaultModel;
+  if (testable !== undefined) payload.testable = testable;
+
+  try {
+    const { data, error } = await configDb
+      .from('settings')
+      .upsert({
+        key: id,
+        scope: SCOPE,
+        value: JSON.stringify(payload),
+        description: `Integration: ${name}`,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ id, ...payload, saved: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/integrations/:id — Remove a user-created integration from config.settings
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { error } = await configDb
+      .from('settings')
+      .delete()
+      .eq('key', id)
+      .eq('scope', SCOPE);
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ id, deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/integrations/:id/test — Run a live connection test
 router.get('/:id/test', async (req, res) => {
+  const integrations = await loadIntegrations();
   const svc = integrations.find(s => s.id === req.params.id);
   if (!svc) return res.status(404).json({ error: 'Integration not found' });
   if (!svc.testable) return res.status(400).json({ error: 'Service does not support testing' });

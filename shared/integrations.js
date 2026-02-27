@@ -1,16 +1,16 @@
 /**
- * Integration registry — single source of truth for all external services.
- * Used by orchestrator /api/integrations endpoint and admin page.
+ * Integration defaults — seed data for known services.
+ * Stored in config.settings (scope='integrations') once saved via admin.
+ * This file provides defaults for first load before any DB rows exist.
  */
 
-module.exports = [
+const DEFAULTS = [
   {
     id: 'supabase',
     name: 'Supabase',
     type: 'database',
     envVars: ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY'],
     description: 'PostgreSQL database, auth, config storage',
-    usedBy: ['all agents'],
     testable: true,
   },
   {
@@ -19,8 +19,12 @@ module.exports = [
     type: 'ai',
     envVars: ['ANTHROPIC_API_KEY'],
     description: 'AI synthesis, classification, content generation',
+    models: [
+      'claude-haiku-4-5-20250514',
+      'claude-sonnet-4-20250514',
+      'claude-opus-4-20250514',
+    ],
     defaultModel: 'claude-haiku-4-5-20250514',
-    usedBy: ['agents/research', 'agents/directory', 'agents/newsletter'],
     testable: false,
   },
   {
@@ -29,8 +33,14 @@ module.exports = [
     type: 'ai',
     envVars: ['OPENAI_API_KEY'],
     description: 'AI content generation, embeddings',
+    models: [
+      'gpt-4o-mini',
+      'gpt-4o',
+      'gpt-4.1',
+      'gpt-4.1-mini',
+      'o3-mini',
+    ],
     defaultModel: 'gpt-4o-mini',
-    usedBy: ['agents/research'],
     testable: false,
   },
   {
@@ -39,8 +49,13 @@ module.exports = [
     type: 'ai',
     envVars: ['PERPLEXITY_API_KEY'],
     description: 'Web-grounded AI search and research',
+    models: [
+      'sonar',
+      'sonar-pro',
+      'sonar-reasoning',
+      'sonar-reasoning-pro',
+    ],
     defaultModel: 'sonar-pro',
-    usedBy: ['agents/research'],
     testable: false,
   },
   {
@@ -49,7 +64,6 @@ module.exports = [
     type: 'publish',
     envVars: ['GITHUB_TOKEN', 'GITHUB_REPOSITORY'],
     description: 'Bulk publish to Astro site, trigger workflows',
-    usedBy: ['agents/directory', 'agents/newsletter'],
     testable: true,
   },
   {
@@ -58,7 +72,8 @@ module.exports = [
     type: 'email',
     envVars: ['KIT_API_KEY'],
     description: 'Newsletter delivery via Kit v4 API',
-    usedBy: ['agents/newsletter'],
     testable: true,
   },
 ];
+
+module.exports = DEFAULTS;
