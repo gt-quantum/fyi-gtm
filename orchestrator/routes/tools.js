@@ -105,50 +105,58 @@ router.put('/:id', async (req, res) => {
 
 // Trigger research for a specific tool
 router.post('/:id/research', async (req, res) => {
-  const toolId = req.params.id;
-
-  const { data: tool, error: toolErr } = await supabase
-    .from('tools')
-    .select('id, name, research_status')
-    .eq('id', toolId)
-    .single();
-
-  if (toolErr || !tool) {
-    return res.status(404).json({ error: 'Tool not found' });
-  }
-
-  if (tool.research_status !== 'queued') {
-    await supabase
-      .from('tools')
-      .update({ research_status: 'queued', updated_at: new Date().toISOString() })
-      .eq('id', toolId);
-  }
-
-  const automations = req.app.locals.automations || [];
-  const researchAgent = automations.find(a => a.id === 'agents/research');
-  if (!researchAgent) {
-    return res.status(500).json({ error: 'Research agent not discovered.' });
-  }
-
-  console.log(`[tools] Research trigger for: ${tool.name}`);
-
-  const { createExecution, completeExecution } = require('../logger');
-  const execution = await createExecution(researchAgent.id);
-
-  res.json({ success: true, executionId: execution.id, tool: tool.name });
-
   try {
-    const result = await researchAgent._module.execute({
+    const toolId = req.params.id;
+
+    const { data: tool, error: toolErr } = await supabase
+      .from('tools')
+      .select('id, name, research_status')
+      .eq('id', toolId)
+      .single();
+
+    if (toolErr || !tool) {
+      return res.status(404).json({ error: 'Tool not found' });
+    }
+
+    if (tool.research_status !== 'queued') {
+      await supabase
+        .from('tools')
+        .update({ research_status: 'queued', updated_at: new Date().toISOString() })
+        .eq('id', toolId);
+    }
+
+    const automations = req.app.locals.automations || [];
+    const researchAgent = automations.find(a => a.id === 'agents/research');
+    if (!researchAgent) {
+      return res.status(500).json({ error: 'Research agent not discovered.' });
+    }
+
+    console.log(`[tools] Research trigger for: ${tool.name}`);
+
+    const { createExecution, completeExecution } = require('../logger');
+    const execution = await createExecution(researchAgent.id);
+
+    // Respond immediately — research runs async on Railway
+    res.json({ success: true, executionId: execution.id, tool: tool.name });
+
+    // Fire and forget — runs after response is sent
+    researchAgent._module.execute({
       executionId: execution.id,
       trigger: 'api',
       runtime: 'railway',
       toolId,
       automations
+    }).then(result => {
+      completeExecution(execution.id, 'success', null, result);
+    }).catch(err => {
+      console.error(`[tools] Research failed for ${tool.name}:`, err.message);
+      completeExecution(execution.id, 'failure', err.message);
     });
-    await completeExecution(execution.id, 'success', null, result);
   } catch (err) {
-    console.error(`[tools] Research failed for ${tool.name}:`, err.message);
-    await completeExecution(execution.id, 'failure', err.message);
+    console.error(`[tools] Research trigger error:`, err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
