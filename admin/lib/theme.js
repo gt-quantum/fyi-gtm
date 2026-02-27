@@ -49,6 +49,7 @@ export const typeColors = {
 
 export function cronToHuman(cron) {
   if (!cron || cron === 'manual') return 'Manual';
+  if (cron === 'triggered') return 'Triggered by agent';
   const parts = cron.split(' ');
   if (parts.length !== 5) return cron;
   const [min, hour, dom, mon, dow] = parts;

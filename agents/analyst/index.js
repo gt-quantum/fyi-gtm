@@ -18,12 +18,35 @@ module.exports = {
   name: 'Analyst Agent',
   description: 'Structures raw research into taxonomy-classified fields: features, sentiment, pricing, competitors, company info, and confidence scores',
   type: 'agent',
-  schedule: 'manual',
+  schedule: 'triggered',
   enabled: true,
   tags: ['analyst', 'tools', 'structuring'],
   runtime: 'railway',
 
+  prompts: {
+    extract_features: 'Extract 5-10 key features with category/differentiator flags, 3-6 use cases with persona, recent developments',
+    extract_sentiment: 'Extract pros/cons with categories, praise/complaint themes with frequency, notable user quotes with source',
+    extract_pricing: 'Structure pricing tiers with exact amounts, model type, free trial details, contract terms',
+    extract_competitors: 'Map 3-8 competitors as direct/indirect/adjacent with differentiators and weaknesses',
+    extract_company: 'Extract founding year, HQ, employee count, key people, funding rounds, notable customers',
+    classify_taxonomy: 'Assign primary_category (20 options), group_name (6 options), pricing tier, company_size, ai_automation, tags',
+    generate_summary: '1-2 sentence summary + "Best for [persona] who need [capability]" statement',
+  },
+
+  operationalParams: {
+    extraction_model: 'gpt-4.1-mini (configurable: analyst_extraction_model)',
+    extraction_provider: 'openai (configurable: analyst_extraction_provider)',
+    classification_model: 'claude-haiku-4-5 (configurable: analyst_classification_model)',
+    classification_provider: 'anthropic (configurable: analyst_classification_provider)',
+    summary_model: 'claude-haiku-4-5 (configurable: analyst_summary_model)',
+    summary_provider: 'anthropic (configurable: analyst_summary_provider)',
+    extraction_temperature: '0.2',
+    classification_temperature: '0.1',
+    summary_temperature: '0.3',
+  },
+
   flow: {
+    triggeredBy: ['agents/research'],
     steps: [
       { id: 'fetch_tool', label: 'Fetch Tool + Raw Research', type: 'action', icon: 'database' },
       { id: 'extract_features', label: 'Extract Features', type: 'ai', icon: 'sparkle' },

@@ -25,7 +25,27 @@ module.exports = {
   tags: ['research', 'tools', 'data-gathering'],
   runtime: 'railway',
 
+  prompts: {
+    perplexity_system: prompts.PERPLEXITY_SYSTEM,
+    perplexity_general: 'Comprehensive product analysis — features, audience, AI capabilities, company background, USPs',
+    perplexity_pricing: 'Targeted pricing lookup — exact dollar amounts, tier names, free trial, contract terms',
+    perplexity_reviews: 'User sentiment — G2/Capterra/Reddit ratings, specific praise/complaints, user quotes',
+    perplexity_competitors: 'Competitive landscape — named alternatives, market segment, differentiators',
+    consolidation: 'Cross-reference all sources, identify contradictions, flag gaps, assess completeness',
+  },
+
+  operationalParams: {
+    perplexity_main_model: 'sonar-pro (configurable: research_perplexity_main_model)',
+    perplexity_targeted_model: 'sonar (configurable: research_perplexity_targeted_model)',
+    consolidation_model: 'claude-haiku-4-5 (configurable: research_consolidation_model)',
+    consolidation_provider: 'anthropic (configurable: research_consolidation_provider)',
+    search_recency_filter: 'month',
+    max_pages_scraped: '5 (homepage + pricing/features/about/integrations)',
+    scrape_timeout: '20s per page',
+  },
+
   flow: {
+    triggers: ['agents/analyst'],
     steps: [
       { id: 'fetch_queue', label: 'Fetch Queued Tools', type: 'action', icon: 'database' },
       { id: 'scrape', label: 'Multi-Page Scrape', type: 'action', icon: 'globe' },
