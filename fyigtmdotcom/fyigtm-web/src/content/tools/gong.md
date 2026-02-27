@@ -1,34 +1,20 @@
 ---
-name: "Gong"
-description: "AI-powered revenue intelligence platform that analyzes sales conversations to improve team performance and win rates"
 url: "https://www.gong.io/"
 logo: "https://www.google.com/s2/favicons?domain=gong.io&sz=128"
-
-# Categorization
-primaryCategory: "sales-engagement"
-categories: ["sales-engagement", "revenue-analytics-attribution", "ai-sales-assistants"]
-
-# Structured Tags
-aiAutomation: ["ai-native"]
-pricingTags: ["enterprise-pricing"]
-companySize: ["mid-market", "enterprise"]
-integrations: ["salesforce", "hubspot", "zoom", "slack", "microsoft-teams", "outreach", "salesloft"]
-
-# Pricing
-pricing: "enterprise"
-priceNote: "$108-250/month per user, annual commitment required"
-
-# Meta
-featured: false
-publishedAt: 2026-01-30
+name: "Gong"
+slug: "gong"
+tags:
+  - "conversation intelligence"
+  - "sales analytics"
+  - "revenue operations"
+  - "AI coaching"
 isNew: true
-hasDeal: false
-isDiscontinued: false
-
-# Operational
-upvotes: 0
-comments: 0
-views: 0
+pricing: "paid"
+category: "Sales Intelligence"
+featured: false
+dateAdded: "2026-01-30"
+priceNote: "$108-250/month per user, annual commitment required"
+description: "AI-powered revenue intelligence platform that analyzes sales conversations to improve team performance and win rates"
 ---
 
 ## What is Gong?
@@ -112,22 +98,22 @@ The privacy aspect generates mixed reactions, with some users embracing the tran
 
 ## Who Is It For?
 
-**Enterprise Sales Teams**
-Gong is ideally suited for enterprise sales organizations with 25+ representatives who need comprehensive visibility into their sales conversations and coaching opportunities. The platform's pricing and feature depth make it most cost-effective for larger teams.
+**Enterprise sales organizations** with established revenue operations teams will find Gong's comprehensive feature set most valuable. These organizations have the budget to support the high per-user costs and the infrastructure to implement the platform's insights effectively across large sales teams.
 
-**Revenue Operations Leaders**
-RevOps professionals will find tremendous value in Gong's ability to aggregate and analyze conversation data across the entire revenue team, providing insights that inform process improvements and strategic decisions.
+**High-velocity sales teams** in competitive markets benefit significantly from Gong's real-time insights and competitive intelligence capabilities. The ability to quickly identify and respond to competitor threats or market changes can provide crucial advantages in fast-moving sales environments.
 
-**Sales Managers and Coaches**
-Frontline sales managers benefit from Gong's coaching insights and the ability to quickly identify both top performers to model and struggling reps who need support, all backed by concrete conversation data.
+**Sales development organizations focused on coaching and training** will appreciate Gong's ability to identify best practices and scale them across teams. The platform's coaching capabilities are particularly valuable for organizations investing heavily in sales team development and performance optimization.
 
-**Organizations Focused on Sales Methodology Adoption**
-Companies implementing or reinforcing specific sales methodologies (MEDDIC, Challenger, etc.) can use Gong to monitor adoption and identify where teams are deviating from the prescribed approach.
+**Revenue operations professionals** who need comprehensive visibility into sales performance and pipeline health will find Gong's analytics and reporting capabilities essential for data-driven decision making and process optimization.
+
+However, **small businesses and startups** may find the pricing prohibitive, especially given the 80% premium for teams under 25 users. These organizations might benefit from exploring alternative solutions that offer similar core functionality at more accessible price points.
 
 ## Verdict
 
-Gong represents the gold standard in conversation intelligence and revenue operations platforms. Its AI-powered analysis capabilities genuinely transform how sales organizations operate, providing insights that were previously impossible to obtain at scale. For enterprises with the budget to invest and the scale to maximize ROI, Gong delivers exceptional value.
+**Bottom line:** Gong is an exceptional revenue intelligence platform for enterprise sales teams, but the high cost limits its accessibility to well-funded organizations.
 
-However, the significant cost—particularly the premium for smaller teams—means Gong isn't the right choice for everyone. Organizations with fewer than 25 sales reps should carefully evaluate whether the investment makes sense compared to more affordable alternatives that might cover their core needs.
+Gong represents the cutting edge of sales technology, offering AI-powered insights that can genuinely transform how revenue teams operate. The platform's ability to analyze conversations, identify patterns, and provide actionable coaching recommendations is impressive and delivers measurable results for organizations that implement it effectively. The extensive feature set, enterprise-grade reliability, and proven track record with major companies make it a standout choice in the conversation intelligence space.
 
-For qualifying organizations, Gong's combination of conversation intelligence, coaching insights, and revenue forecasting creates a powerful platform that can meaningfully improve sales performance. The key is ensuring your organization has the scale and resources to fully leverage its capabilities.
+However, the significant investment required – both in terms of upfront costs and ongoing training – means Gong is primarily suited for established organizations with substantial sales operations budgets. The pricing structure particularly disadvantages smaller teams, making it challenging for growing businesses to access these advanced capabilities when they might benefit most from systematic sales process improvements.
+
+For enterprise organizations with the budget and commitment to fully leverage its capabilities, Gong offers exceptional value and can deliver substantial ROI through improved win rates, shorter sales cycles, and more effective coaching. Smaller organizations should carefully evaluate whether the investment aligns with their current needs and growth trajectory, potentially considering more affordable alternatives until they reach the scale where Gong's comprehensive feature set becomes essential.

@@ -1,25 +1,31 @@
 ---
-name: "Free AI Video Generator: Create Stunning Videos with AI"
-description: "AI-powered video creation platform that transforms text scripts into professional videos with realistic AI avatars in 200+ languages."
 url: "https://www.heygen.com/"
-primaryCategory: "content-creative"
-categories: ["content-creative", "ai-marketing-tools"]
-aiAutomation: ["ai-native"]
-pricingTags: ["freemium"]
-companySize: ["smb", "mid-market", "enterprise"]
-integrations: ["zapier", "wordpress", "canva"]
-pricing: "freemium"
-priceNote: "Free tier with watermarks, Creator plan at $24/month"
-featured: false
-publishedAt: "2026-02-12"
-upvotes: 0
-comments: 0
-views: 0
-isNew: true
-isVerified: false
-hasDeal: false
-isDiscontinued: false
 logo: "https://www.google.com/s2/favicons?domain=heygen.com&sz=128"
+name: "Free AI Video Generator: Create Stunning Videos with AI"
+slug: "free-ai-video-generator-create-stunning-videos-with-ai"
+group: "marketing"
+isNew: true
+pricing: "freemium"
+featured: false
+priceNote: "Free tier with watermarks, Creator plan at $24/month"
+categories:
+  - "content-creative"
+  - "ai-marketing-tools"
+companySize:
+  - "smb"
+  - "mid-market"
+  - "enterprise"
+description: "AI-powered video creation platform that transforms text scripts into professional videos with realistic AI avatars in 200+ languages."
+pricingTags:
+  - "freemium"
+publishedAt: "2026-02-12"
+aiAutomation:
+  - "ai-native"
+integrations:
+  - "zapier"
+  - "wordpress"
+  - "canva"
+primaryCategory: "content-creative"
 ---
 
 ## What is Free AI Video Generator: Create Stunning Videos with AI?

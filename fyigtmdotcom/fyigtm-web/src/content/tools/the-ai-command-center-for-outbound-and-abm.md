@@ -1,25 +1,31 @@
 ---
-name: "The AI Command Center for Outbound and ABM"
-description: "AI-powered sales platform tracking job changes and automating outbound prospecting with intelligent contact data and personalized outreach."
 url: "https://www.usergems.com/"
-primaryCategory: "sales-engagement"
-categories: ["sales-engagement", "abm-demand-gen", "ai-sales-assistants", "contact-company-data"]
-aiAutomation: ["ai-native"]
-pricingTags: ["enterprise-pricing"]
-companySize: ["mid-market", "enterprise"]
-integrations: ["salesforce", "hubspot"]
-pricing: "enterprise"
-priceNote: "Enterprise pricing that may be prohibitive for smaller organizations and startups"
-featured: false
-publishedAt: "2026-02-12"
-upvotes: 0
-comments: 0
-views: 0
-isNew: true
-isVerified: false
-hasDeal: false
-isDiscontinued: false
 logo: "https://www.google.com/s2/favicons?domain=usergems.com&sz=128"
+name: "The AI Command Center for Outbound and ABM"
+slug: "the-ai-command-center-for-outbound-and-abm"
+group: "sales"
+isNew: true
+pricing: "enterprise"
+featured: false
+priceNote: "Enterprise pricing that may be prohibitive for smaller organizations and startups"
+categories:
+  - "sales-engagement"
+  - "abm-demand-gen"
+  - "ai-sales-assistants"
+  - "contact-company-data"
+companySize:
+  - "mid-market"
+  - "enterprise"
+description: "AI-powered sales platform tracking job changes and automating outbound prospecting with intelligent contact data and personalized outreach."
+pricingTags:
+  - "enterprise-pricing"
+publishedAt: "2026-02-12"
+aiAutomation:
+  - "ai-native"
+integrations:
+  - "salesforce"
+  - "hubspot"
+primaryCategory: "sales-engagement"
 ---
 
 ## What is The AI Command Center for Outbound and ABM?
