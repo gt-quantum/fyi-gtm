@@ -1,0 +1,6 @@
+**/node_modules
+**/.next
+**/.git
+example_automation-platform
+remotion-video
+.mcp.json
