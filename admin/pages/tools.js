@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
-import FilterChips from '../components/FilterChips';
 import FormModal, { FormField, inputStyle } from '../components/FormModal';
 import { colors, timeAgo } from '../lib/theme';
+import { GROUPS, getGroupLabel, GROUP_COLORS } from '../lib/taxonomy';
 
 export default function Tools() {
   const router = useRouter();
@@ -15,13 +15,16 @@ export default function Tools() {
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [adding, setAdding] = useState(false);
-  const [researching, setResearching] = useState({});
-  const [researchFilter, setResearchFilter] = useState('all');
-  const [entryFilter, setEntryFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
+
+  // Multi-select filters
+  const [researchFilters, setResearchFilters] = useState([]);
+  const [entryFilters, setEntryFilters] = useState([]);
+  const [newsletterFilters, setNewsletterFilters] = useState([]);
+  const [groupFilters, setGroupFilters] = useState([]);
 
   async function loadTools() {
     try {
@@ -57,23 +60,6 @@ export default function Tools() {
     setAdding(false);
   }
 
-  async function triggerResearch(e, toolId) {
-    e.stopPropagation();
-    setResearching(prev => ({ ...prev, [toolId]: true }));
-    try {
-      const res = await fetch(`/api/tools/${toolId}/research`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        setTools(prev => prev.map(t =>
-          t.id === toolId ? { ...t, research_status: 'researching' } : t
-        ));
-      }
-    } catch (err) {
-      alert('Failed to trigger research');
-    }
-    setResearching(prev => ({ ...prev, [toolId]: false }));
-  }
-
   function handleSelect(id, checked) {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -84,7 +70,6 @@ export default function Tools() {
 
   function handleSelectAll(checked) {
     if (checked) {
-      // Only select tools that have an entry_id (publishable)
       const publishable = filtered.filter(t => t.entry_id).map(t => t.id);
       setSelectedIds(new Set(publishable));
     } else {
@@ -123,49 +108,64 @@ export default function Tools() {
     setPublishing(false);
   }
 
+  // Compute counts for filter dropdowns
+  const counts = useMemo(() => {
+    const research = {};
+    const entry = {};
+    const newsletter = {};
+    const group = {};
+    tools.forEach(t => {
+      research[t.research_status] = (research[t.research_status] || 0) + 1;
+      const es = t.entry_status || 'no_entry';
+      entry[es] = (entry[es] || 0) + 1;
+      const ns = t.newsletter_status || 'none';
+      newsletter[ns] = (newsletter[ns] || 0) + 1;
+      const gn = t.group_name || 'unassigned';
+      group[gn] = (group[gn] || 0) + 1;
+    });
+    return { research, entry, newsletter, group };
+  }, [tools]);
+
   const filtered = useMemo(() => {
     let list = tools;
-    if (researchFilter !== 'all') list = list.filter(t => t.research_status === researchFilter);
-    if (entryFilter !== 'all') {
-      if (entryFilter === 'no_entry') {
-        list = list.filter(t => !t.entry_status);
-      } else {
-        list = list.filter(t => t.entry_status === entryFilter);
-      }
-    }
+    if (researchFilters.length > 0)
+      list = list.filter(t => researchFilters.includes(t.research_status));
+    if (entryFilters.length > 0)
+      list = list.filter(t => entryFilters.includes(t.entry_status || 'no_entry'));
+    if (newsletterFilters.length > 0)
+      list = list.filter(t => newsletterFilters.includes(t.newsletter_status || 'none'));
+    if (groupFilters.length > 0)
+      list = list.filter(t => groupFilters.includes(t.group_name || 'unassigned'));
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(t => t.name.toLowerCase().includes(q) || (t.url && t.url.toLowerCase().includes(q)));
     }
     return list;
-  }, [tools, researchFilter, entryFilter, search]);
+  }, [tools, researchFilters, entryFilters, newsletterFilters, groupFilters, search]);
 
-  const researchCounts = useMemo(() => {
-    const counts = {};
-    tools.forEach(t => { counts[t.research_status] = (counts[t.research_status] || 0) + 1; });
-    return counts;
-  }, [tools]);
+  const activeFilterCount = researchFilters.length + entryFilters.length + newsletterFilters.length + groupFilters.length;
 
-  const entryCounts = useMemo(() => {
-    const counts = { published: 0, draft: 0, staged: 0, no_entry: 0 };
-    tools.forEach(t => {
-      if (!t.entry_status) counts.no_entry++;
-      else if (t.entry_status === 'published') counts.published++;
-      else if (t.entry_status === 'staged') counts.staged++;
-      else if (t.entry_status === 'draft') counts.draft++;
-    });
-    return counts;
-  }, [tools]);
+  function clearAllFilters() {
+    setResearchFilters([]);
+    setEntryFilters([]);
+    setNewsletterFilters([]);
+    setGroupFilters([]);
+  }
 
   const columns = [
     { key: 'name', label: 'Name', render: (v) => <span style={{ fontWeight: 500 }}>{v}</span> },
-    { key: 'url', label: 'URL', width: 140, render: (v) => {
+    { key: 'url', label: 'URL', width: 130, render: (v) => {
       try { return <span style={{ color: colors.dim, fontSize: 12 }}>{new URL(v).hostname}</span>; }
       catch { return <span style={{ color: colors.dim, fontSize: 12 }}>{v}</span>; }
     }},
+    { key: 'group_name', label: 'Group', width: 140, render: (v) => {
+      if (!v) return <span style={{ color: colors.subtle, fontSize: 12 }}>—</span>;
+      const color = GROUP_COLORS[v] || colors.dim;
+      return <span style={{ color, fontSize: 12, fontWeight: 500 }}>{getGroupLabel(v)}</span>;
+    }},
     { key: 'research_status', label: 'Research', width: 100, render: (v) => <StatusBadge status={v} small /> },
     { key: 'entry_status', label: 'Entry', width: 100, render: (v) => <StatusBadge status={v || 'no entry'} small /> },
-    { key: 'newsletter_status', label: 'Newsletter', width: 100, render: (v, row) => {
+    { key: 'newsletter_status', label: 'Newsletter', width: 110, render: (v, row) => {
       const s = v || 'none';
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -174,25 +174,7 @@ export default function Tools() {
         </span>
       );
     }},
-    { key: 'primary_category', label: 'Category', width: 140, render: (v) => (
-      <span style={{ color: colors.dim, fontSize: 12 }}>{v ? v.replace(/-/g, ' ') : '-'}</span>
-    )},
     { key: 'updated_at', label: 'Updated', width: 90, render: (v) => <span style={{ color: colors.dim, fontSize: 12 }}>{timeAgo(v)}</span> },
-    { key: '_actions', label: '', width: 90, render: (_, row) => (
-      <div onClick={(e) => e.stopPropagation()}>
-        {(row.research_status === 'queued' || row.research_status === 'failed') && (
-          <button onClick={(e) => triggerResearch(e, row.id)} disabled={researching[row.id]}
-            style={actionBtnStyle}>{researching[row.id] ? '...' : 'Research'}</button>
-        )}
-        {row.research_status === 'complete' && (
-          <button onClick={(e) => triggerResearch(e, row.id)} disabled={researching[row.id]}
-            style={actionBtnStyle}>{researching[row.id] ? '...' : 'Re-run'}</button>
-        )}
-        {row.research_status === 'researching' && (
-          <span style={{ color: colors.warning, fontSize: 11 }}>Running...</span>
-        )}
-      </div>
-    )},
   ];
 
   if (loading) return <Layout><p style={{ color: colors.dim, marginTop: 40 }}>Loading...</p></Layout>;
@@ -222,41 +204,72 @@ export default function Tools() {
         </div>
       )}
 
-      {/* Search + filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Search + filter dropdowns */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           type="text"
           placeholder="Search tools..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ ...inputStyle, maxWidth: 260, padding: '7px 12px' }}
+          style={{ ...inputStyle, maxWidth: 240, padding: '7px 12px' }}
         />
-        <FilterChips
-          value={researchFilter}
-          onChange={setResearchFilter}
+
+        <MultiSelectDropdown
+          label="Research"
+          selected={researchFilters}
+          onChange={setResearchFilters}
           options={[
-            { value: 'all', label: 'All', count: tools.length },
-            { value: 'queued', label: 'Queued', count: researchCounts.queued || 0 },
-            { value: 'researching', label: 'Researching', count: researchCounts.researching || 0 },
-            { value: 'complete', label: 'Complete', count: researchCounts.complete || 0 },
-            { value: 'failed', label: 'Failed', count: researchCounts.failed || 0 },
+            { value: 'queued', label: 'Queued', count: counts.research.queued },
+            { value: 'researching', label: 'Researching', count: counts.research.researching },
+            { value: 'complete', label: 'Complete', count: counts.research.complete },
+            { value: 'failed', label: 'Failed', count: counts.research.failed },
           ]}
         />
-        <button onClick={loadTools} style={{ ...actionBtnStyle, marginLeft: 'auto' }}>Refresh</button>
-      </div>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-        <span style={{ fontSize: 11, color: colors.dim, fontWeight: 500 }}>Entry:</span>
-        <FilterChips
-          value={entryFilter}
-          onChange={setEntryFilter}
+        <MultiSelectDropdown
+          label="Entry"
+          selected={entryFilters}
+          onChange={setEntryFilters}
           options={[
-            { value: 'all', label: 'All' },
-            { value: 'published', label: 'Published', count: entryCounts.published },
-            { value: 'staged', label: 'Staged', count: entryCounts.staged },
-            { value: 'draft', label: 'Draft', count: entryCounts.draft },
-            { value: 'no_entry', label: 'No Entry', count: entryCounts.no_entry },
+            { value: 'published', label: 'Published', count: counts.entry.published },
+            { value: 'staged', label: 'Staged', count: counts.entry.staged },
+            { value: 'draft', label: 'Draft', count: counts.entry.draft },
+            { value: 'no_entry', label: 'No Entry', count: counts.entry.no_entry },
           ]}
         />
+        <MultiSelectDropdown
+          label="Newsletter"
+          selected={newsletterFilters}
+          onChange={setNewsletterFilters}
+          options={[
+            { value: 'none', label: 'None', count: counts.newsletter.none },
+            { value: 'queued', label: 'Queued', count: counts.newsletter.queued },
+            { value: 'scheduled', label: 'Scheduled', count: counts.newsletter.scheduled },
+            { value: 'sent', label: 'Sent', count: counts.newsletter.sent },
+          ]}
+        />
+        <MultiSelectDropdown
+          label="Group"
+          selected={groupFilters}
+          onChange={setGroupFilters}
+          options={[
+            ...GROUPS.map(g => ({ value: g.value, label: g.label, count: counts.group[g.value], color: GROUP_COLORS[g.value] })),
+            { value: 'unassigned', label: 'Unassigned', count: counts.group.unassigned },
+          ]}
+        />
+
+        {activeFilterCount > 0 && (
+          <button onClick={clearAllFilters} style={{
+            padding: '5px 10px', border: 'none', borderRadius: 5,
+            background: 'transparent', color: colors.accent, fontSize: 12, cursor: 'pointer',
+          }}>
+            Clear {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+          </button>
+        )}
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: colors.dim }}>{filtered.length} of {tools.length}</span>
+          <button onClick={loadTools} style={refreshBtnStyle}>Refresh</button>
+        </div>
       </div>
 
       <DataTable
@@ -290,6 +303,119 @@ export default function Tools() {
   );
 }
 
+// --- Multi-select dropdown filter component ---
+
+function MultiSelectDropdown({ label, selected, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  function toggle(value) {
+    if (selected.includes(value)) {
+      onChange(selected.filter(v => v !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  }
+
+  const hasSelection = selected.length > 0;
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          border: `1px solid ${hasSelection ? colors.accent : colors.border}`,
+          background: hasSelection ? colors.accent + '18' : 'transparent',
+          color: hasSelection ? colors.accent : colors.dim,
+          display: 'flex', alignItems: 'center', gap: 4,
+          transition: 'all 0.15s',
+        }}
+      >
+        {label}
+        {hasSelection && (
+          <span style={{
+            background: colors.accent, color: 'white', borderRadius: 10,
+            padding: '0 5px', fontSize: 10, fontWeight: 600, lineHeight: '16px',
+          }}>
+            {selected.length}
+          </span>
+        )}
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ marginLeft: 2 }}>
+          <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 50,
+          background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)', minWidth: 180, padding: 4,
+        }}>
+          {options.map(opt => {
+            const isChecked = selected.includes(opt.value);
+            const count = opt.count || 0;
+            if (count === 0 && !isChecked) return null; // hide empty options unless selected
+            return (
+              <button
+                key={opt.value}
+                onClick={() => toggle(opt.value)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  padding: '6px 10px', border: 'none', borderRadius: 4,
+                  background: isChecked ? colors.accent + '18' : 'transparent',
+                  color: colors.text, fontSize: 12, cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{
+                  width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                  border: `1.5px solid ${isChecked ? colors.accent : colors.subtle}`,
+                  background: isChecked ? colors.accent : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {isChecked && (
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                      <path d="M1.5 4L3.5 6L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <span style={{ flex: 1, color: opt.color || colors.text }}>{opt.label}</span>
+                <span style={{ color: colors.subtle, fontSize: 11 }}>{count}</span>
+              </button>
+            );
+          })}
+          {hasSelection && (
+            <>
+              <div style={{ height: 1, background: colors.border, margin: '4px 0' }} />
+              <button
+                onClick={() => { onChange([]); setOpen(false); }}
+                style={{
+                  display: 'block', width: '100%', padding: '5px 10px', border: 'none', borderRadius: 4,
+                  background: 'transparent', color: colors.dim, fontSize: 11, cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                Clear
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Styles ---
+
 const primaryBtnStyle = {
   padding: '7px 16px', border: '1px solid #3b82f6', borderRadius: 6,
   background: '#3b82f6', color: 'white', fontSize: 13, fontWeight: 500, cursor: 'pointer',
@@ -300,7 +426,7 @@ const publishBtnStyle = {
   background: '#052e16', color: '#4ade80', fontSize: 13, fontWeight: 500, cursor: 'pointer',
 };
 
-const actionBtnStyle = {
-  padding: '3px 10px', border: `1px solid ${colors.border}`, borderRadius: 5,
-  background: 'transparent', color: colors.muted, fontSize: 11, fontWeight: 500, cursor: 'pointer',
+const refreshBtnStyle = {
+  padding: '5px 12px', border: `1px solid ${colors.border}`, borderRadius: 6,
+  background: 'transparent', color: colors.muted, fontSize: 12, fontWeight: 500, cursor: 'pointer',
 };

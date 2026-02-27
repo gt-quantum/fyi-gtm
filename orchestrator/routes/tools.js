@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
 
   let query = supabase
     .from('tools')
-    .select('id, name, slug, url, research_status, category, primary_category, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority, tags, company_size, ai_automation')
+    .select('id, name, slug, url, research_status, category, primary_category, group_name, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority, tags, company_size, ai_automation')
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
 
