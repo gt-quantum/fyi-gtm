@@ -1,85 +1,53 @@
 /**
- * Research Agent — Phase 3
+ * Research Agent — Comprehensive Data Gathering
  *
- * Picks queued tools from the tools table, scrapes their website,
- * runs Perplexity search for reviews/pricing, then uses Claude to
- * synthesize structured classification data.
+ * Pipeline: Fetch queue → Multi-page scrape → 4 Perplexity searches
+ * (general/pricing/reviews/competitors) → Haiku consolidation → Store + trigger Analyst.
  *
- * Updates tools row with research_status='complete'.
+ * Writes raw_research JSONB, research_sources, sets research_status='researched'.
+ * Chains to Analyst Agent for structuring.
  */
 const { supabase } = require('../../shared/clients/supabase');
 const { logStep, createExecution, completeExecution } = require('../../shared/database/queries');
-const anthropic = require('../../shared/clients/anthropic');
+const { getConfig } = require('../../shared/clients/config');
+const { ask } = require('../../shared/clients/ai');
 const perplexity = require('../../shared/clients/perplexity');
 const { scrapeWebsite } = require('./scraper');
+const { createTracker } = require('./sources');
+const prompts = require('./prompts');
 
-// --- Module Exports (discovery pattern) ---
 module.exports = {
   name: 'Research Agent',
-  description: 'Scrapes and researches GTM tools, populates structured data in the tools table',
+  description: 'Comprehensive data gathering: scrapes websites, runs targeted web searches, consolidates findings into raw_research JSONB',
   type: 'agent',
   schedule: 'manual',
   enabled: true,
-  tags: ['research', 'tools'],
+  tags: ['research', 'tools', 'data-gathering'],
   runtime: 'railway',
-
-  prompts: {
-    perplexity_system: 'You are a GTM tool research analyst. Provide detailed, factual analysis.',
-    synthesis_system: `You are a GTM tool classification engine. Given website data and research, output a JSON object with structured fields for a tool directory.
-
-IMPORTANT: Output ONLY valid JSON. No markdown, no explanation, just the JSON object.
-
-The valid values for each field are:
-
-**primary_category** (pick ONE):
-intent-signals, ai-sales-assistants, lead-management, sales-engagement, crm-platforms, email-marketing, abm-platforms, data-enrichment, conversation-intelligence, content-creation, sales-enablement, analytics-reporting, meeting-scheduling, proposal-cpq, customer-success, marketing-automation, advertising, social-selling, competitive-intelligence, revenue-operations
-
-**group_name** (pick ONE):
-data-intelligence, sales-automation, marketing-platforms, revenue-tools, content-tools, operations
-
-**pricing** (pick ONE):
-free, freemium, starter, mid-market, enterprise, custom, usage-based
-
-**company_size** (pick 1-3):
-startup, smb, mid-market, enterprise
-
-**ai_automation** (pick 1-2):
-ai-native, ai-enhanced, automation-focused, traditional
-
-**pricing_tags** (pick 1-2):
-free-tier, affordable, mid-range, enterprise-pricing, usage-based, custom-pricing`,
-    perplexity_template: 'Research the GTM/sales tool "{tool.name}" ({tool.url}). Covers: features, pricing, target audience, integrations, user sentiment, competitive positioning, AI capabilities, USPs.',
-    synthesis_template: 'Classify this GTM tool based on research. TOOL: {tool.name} ({tool.url}). Outputs JSON with summary, category, primary_category, categories, group_name, tags, pricing, price_note, pricing_tags, company_size, ai_automation, integrations.',
-  },
-
-  operationalParams: {
-    perplexity_model: 'sonar-pro',
-    synthesis_model: 'claude-haiku-4-5-20250514',
-    synthesis_temperature: 0.3,
-    synthesis_max_tokens: 4096,
-    search_recency_filter: 'month',
-  },
 
   flow: {
     steps: [
       { id: 'fetch_queue', label: 'Fetch Queued Tools', type: 'action', icon: 'database' },
-      { id: 'scrape', label: 'Scrape Website', type: 'action', icon: 'globe' },
-      { id: 'perplexity', label: 'Perplexity Research', type: 'ai', icon: 'sparkle' },
-      { id: 'synthesis', label: 'Claude Synthesis', type: 'ai', icon: 'sparkle' },
-      { id: 'update_tool', label: 'Update Tool Record', type: 'output', icon: 'check' },
+      { id: 'scrape', label: 'Multi-Page Scrape', type: 'action', icon: 'globe' },
+      { id: 'perplexity_general', label: 'Perplexity: General', type: 'ai', icon: 'sparkle' },
+      { id: 'perplexity_pricing', label: 'Perplexity: Pricing', type: 'ai', icon: 'sparkle' },
+      { id: 'perplexity_reviews', label: 'Perplexity: Reviews', type: 'ai', icon: 'sparkle' },
+      { id: 'perplexity_competitors', label: 'Perplexity: Competitors', type: 'ai', icon: 'sparkle' },
+      { id: 'consolidation', label: 'Consolidation', type: 'ai', icon: 'sparkle' },
+      { id: 'store', label: 'Store + Trigger Analyst', type: 'output', icon: 'check' },
     ],
     edges: [
       { from: 'fetch_queue', to: 'scrape' },
-      { from: 'scrape', to: 'perplexity' },
-      { from: 'perplexity', to: 'synthesis' },
-      { from: 'synthesis', to: 'update_tool' },
-      { from: 'update_tool', to: 'scrape', label: 'next tool' },
+      { from: 'scrape', to: 'perplexity_general' },
+      { from: 'perplexity_general', to: 'perplexity_pricing' },
+      { from: 'perplexity_pricing', to: 'perplexity_reviews' },
+      { from: 'perplexity_reviews', to: 'perplexity_competitors' },
+      { from: 'perplexity_competitors', to: 'consolidation' },
+      { from: 'consolidation', to: 'store' },
+      { from: 'store', to: 'scrape', label: 'next tool' },
     ],
   },
 
-  /**
-   * Validate environment before running.
-   */
   async validate() {
     const errors = [];
     if (!process.env.ANTHROPIC_API_KEY) errors.push('Missing ANTHROPIC_API_KEY');
@@ -89,32 +57,36 @@ free-tier, affordable, mid-range, enterprise-pricing, usage-based, custom-pricin
     return { valid: errors.length === 0, errors };
   },
 
-  /**
-   * Main execution: process all queued tools (or a specific tool_id from context).
-   */
   async execute(context) {
     const { executionId, toolId } = context;
     let processed = 0;
     let failed = 0;
 
-    // Get tools to research
+    // Load configurable model settings
+    const config = {
+      mainModel: await getConfig('research_perplexity_main_model', 'sonar-pro'),
+      targetedModel: await getConfig('research_perplexity_targeted_model', 'sonar'),
+      consolidationModel: await getConfig('research_consolidation_model', 'claude-haiku-4-5-20250514'),
+      consolidationProvider: await getConfig('research_consolidation_provider', 'anthropic'),
+    };
+
+    // Step 1: Fetch queue
     let query = supabase
       .from('tools')
-      .select('id, name, slug, url')
+      .select('id, name, slug, url, research_version')
       .eq('research_status', 'queued')
       .order('created_at', { ascending: true });
 
-    // If triggered for a specific tool, override
     if (toolId) {
       query = supabase
         .from('tools')
-        .select('id, name, slug, url')
+        .select('id, name, slug, url, research_version')
         .eq('id', toolId);
     }
 
     const { data: tools, error: fetchError } = await query;
-
     if (fetchError) throw new Error(`Failed to fetch queued tools: ${fetchError.message}`);
+
     if (!tools || tools.length === 0) {
       await logStep(executionId, 'fetch_queue', 'completed', { message: 'No queued tools found' });
       return { processed: 0, failed: 0 };
@@ -124,18 +96,15 @@ free-tier, affordable, mid-range, enterprise-pricing, usage-based, custom-pricin
 
     for (const tool of tools) {
       try {
-        await researchTool(tool, executionId);
+        await researchTool(tool, executionId, config, context);
         processed++;
       } catch (err) {
         console.error(`[research] Failed for ${tool.slug}:`, err.message);
-        await logStep(executionId, `research_${tool.slug}`, 'failed', { error: err.message });
-
-        // Mark as failed so it doesn't block the queue
+        await logStep(executionId, `error_${tool.slug}`, 'failed', { error: err.message });
         await supabase
           .from('tools')
           .update({ research_status: 'failed', updated_at: new Date().toISOString() })
           .eq('id', tool.id);
-
         failed++;
       }
     }
@@ -148,189 +117,234 @@ free-tier, affordable, mid-range, enterprise-pricing, usage-based, custom-pricin
 // Core research pipeline for a single tool
 // ----------------------------------------------------------------
 
-async function researchTool(tool, executionId) {
+async function researchTool(tool, executionId, config, context) {
   console.log(`[research] Starting: ${tool.name} (${tool.url})`);
+  const sourceTracker = createTracker();
 
-  // 1. Mark as researching
+  // Mark as researching
   await supabase
     .from('tools')
     .update({ research_status: 'researching', updated_at: new Date().toISOString() })
     .eq('id', tool.id);
 
+  // Step 2: Multi-page scrape
   await logStep(executionId, `scrape_${tool.slug}`, 'started');
-
-  // 2. Scrape website
-  let websiteData;
+  let scrapeData;
   try {
-    websiteData = await scrapeWebsite(tool.url);
+    scrapeData = await scrapeWebsite(tool.url);
+    sourceTracker.add(tool.url, 'scrape', { section: 'homepage' });
   } catch (err) {
     console.warn(`[research] Scrape failed for ${tool.slug}: ${err.message}`);
-    websiteData = { url: tool.url, error: err.message, scrapedAt: new Date().toISOString() };
+    scrapeData = {
+      homepage: { title: '', description: '', h1s: [], meta: {}, error: err.message },
+      pricing_page: { found: false },
+      features_page: { found: false },
+      about_page: { found: false },
+      integrations_page: { found: false }
+    };
   }
-
   await logStep(executionId, `scrape_${tool.slug}`, 'completed', {
-    hasData: !websiteData.error,
-    pageTitle: websiteData.pageTitle
+    homepage: !!scrapeData.homepage?.title,
+    pricing: scrapeData.pricing_page?.found || false,
+    features: scrapeData.features_page?.found || false,
+    about: scrapeData.about_page?.found || false,
+    integrations: scrapeData.integrations_page?.found || false,
   });
 
-  // 3. Perplexity deep research
-  await logStep(executionId, `perplexity_${tool.slug}`, 'started');
-
-  const perplexityRes = await perplexity.ask({
-    model: 'sonar-pro',
-    system: 'You are a GTM tool research analyst. Provide detailed, factual analysis.',
-    messages: [{
-      role: 'user',
-      content: buildPerplexityPrompt(tool, websiteData)
-    }],
+  // Step 3: Perplexity General (sonar-pro)
+  await logStep(executionId, `perplexity_general_${tool.slug}`, 'started');
+  const generalQuery = prompts.buildGeneralPrompt(tool, scrapeData);
+  const generalRes = await perplexity.ask({
+    model: config.mainModel,
+    system: prompts.PERPLEXITY_SYSTEM,
+    messages: [{ role: 'user', content: generalQuery }],
     search_recency_filter: 'month'
   });
-
-  const researchText = perplexity.getText(perplexityRes);
-  const citations = perplexity.getCitations(perplexityRes);
-
-  await logStep(executionId, `perplexity_${tool.slug}`, 'completed', {
-    charCount: researchText.length,
-    citationCount: citations.length
+  const generalText = perplexity.getText(generalRes);
+  const generalCitations = perplexity.getCitations(generalRes);
+  sourceTracker.addCitations(generalCitations, 'general');
+  await logStep(executionId, `perplexity_general_${tool.slug}`, 'completed', {
+    chars: generalText.length, citations: generalCitations.length, model: config.mainModel
   });
 
-  // 4. Claude synthesis — structured classification
-  await logStep(executionId, `synthesis_${tool.slug}`, 'started');
+  // Step 4: Perplexity Pricing (sonar)
+  await logStep(executionId, `perplexity_pricing_${tool.slug}`, 'started');
+  const pricingQuery = prompts.buildPricingPrompt(tool, scrapeData);
+  const pricingRes = await perplexity.ask({
+    model: config.targetedModel,
+    system: prompts.PERPLEXITY_SYSTEM,
+    messages: [{ role: 'user', content: pricingQuery }],
+    search_recency_filter: 'month'
+  });
+  const pricingText = perplexity.getText(pricingRes);
+  const pricingCitations = perplexity.getCitations(pricingRes);
+  sourceTracker.addCitations(pricingCitations, 'pricing');
+  await logStep(executionId, `perplexity_pricing_${tool.slug}`, 'completed', {
+    chars: pricingText.length, citations: pricingCitations.length, model: config.targetedModel
+  });
 
-  const synthesisRes = await anthropic.ask({
-    model: 'claude-haiku-4-5-20250514',
+  // Step 5: Perplexity Reviews (sonar)
+  await logStep(executionId, `perplexity_reviews_${tool.slug}`, 'started');
+  const reviewsQuery = prompts.buildReviewsPrompt(tool);
+  const reviewsRes = await perplexity.ask({
+    model: config.targetedModel,
+    system: prompts.PERPLEXITY_SYSTEM,
+    messages: [{ role: 'user', content: reviewsQuery }],
+    search_recency_filter: 'month'
+  });
+  const reviewsText = perplexity.getText(reviewsRes);
+  const reviewsCitations = perplexity.getCitations(reviewsRes);
+  sourceTracker.addCitations(reviewsCitations, 'reviews');
+  await logStep(executionId, `perplexity_reviews_${tool.slug}`, 'completed', {
+    chars: reviewsText.length, citations: reviewsCitations.length, model: config.targetedModel
+  });
+
+  // Step 6: Perplexity Competitors (sonar)
+  await logStep(executionId, `perplexity_competitors_${tool.slug}`, 'started');
+  const competitorsQuery = prompts.buildCompetitorsPrompt(tool, scrapeData);
+  const competitorsRes = await perplexity.ask({
+    model: config.targetedModel,
+    system: prompts.PERPLEXITY_SYSTEM,
+    messages: [{ role: 'user', content: competitorsQuery }],
+    search_recency_filter: 'month'
+  });
+  const competitorsText = perplexity.getText(competitorsRes);
+  const competitorsCitations = perplexity.getCitations(competitorsRes);
+  sourceTracker.addCitations(competitorsCitations, 'competitors');
+  await logStep(executionId, `perplexity_competitors_${tool.slug}`, 'completed', {
+    chars: competitorsText.length, citations: competitorsCitations.length, model: config.targetedModel
+  });
+
+  // Step 7: Consolidation (Haiku)
+  await logStep(executionId, `consolidation_${tool.slug}`, 'started');
+  const perplexityResults = {
+    general: { query: generalQuery, response: generalText, citations: generalCitations, model: config.mainModel },
+    pricing: { query: pricingQuery, response: pricingText, citations: pricingCitations, model: config.targetedModel },
+    reviews: { query: reviewsQuery, response: reviewsText, citations: reviewsCitations, model: config.targetedModel },
+    competitors: { query: competitorsQuery, response: competitorsText, citations: competitorsCitations, model: config.targetedModel }
+  };
+
+  const consolidationPrompt = prompts.buildConsolidationPrompt(tool, scrapeData, perplexityResults);
+  const consolidationRes = await ask(config.consolidationProvider, {
+    model: config.consolidationModel,
+    system: 'You are a research analyst. Cross-reference data from multiple sources and identify gaps. Output ONLY valid JSON.',
+    messages: [{ role: 'user', content: consolidationPrompt }],
     max_tokens: 4096,
-    temperature: 0.3,
-    system: SYNTHESIS_SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: buildSynthesisPrompt(tool, websiteData, researchText)
-    }]
+    temperature: 0.2
   });
 
-  const synthesisText = anthropic.getText(synthesisRes);
-  let classification;
-
-  try {
-    // Extract JSON from the response (handles markdown code blocks)
-    const jsonMatch = synthesisText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found in synthesis response');
-    classification = JSON.parse(jsonMatch[0]);
-  } catch (parseErr) {
-    console.error(`[research] Failed to parse synthesis for ${tool.slug}:`, parseErr.message);
-    throw new Error(`Synthesis parse failed: ${parseErr.message}`);
+  let consolidationText;
+  if (config.consolidationProvider === 'anthropic') {
+    const anthropic = require('../../shared/clients/anthropic');
+    consolidationText = anthropic.getText(consolidationRes);
+  } else {
+    const openai = require('../../shared/clients/openai');
+    consolidationText = openai.getText(consolidationRes);
   }
 
-  await logStep(executionId, `synthesis_${tool.slug}`, 'completed', {
-    category: classification.primary_category,
-    tagCount: classification.tags?.length
+  let consolidation;
+  try {
+    const jsonMatch = consolidationText.match(/\{[\s\S]*\}/);
+    consolidation = jsonMatch ? JSON.parse(jsonMatch[0]) : { notes: 'Parse failed' };
+  } catch {
+    consolidation = { notes: 'JSON parse failed', raw: consolidationText.slice(0, 500) };
+  }
+
+  await logStep(executionId, `consolidation_${tool.slug}`, 'completed', {
+    gaps: consolidation.gaps?.length || 0, model: config.consolidationModel
   });
 
-  // 5. Update tools row
-  const updatePayload = {
-    website_data: websiteData,
-    research_blob: researchText,
-    review_data: { citations, perplexity_model: 'sonar-pro' },
-    summary: classification.summary || null,
-    category: classification.category || null,
-    primary_category: classification.primary_category || null,
-    categories: classification.categories || [],
-    group_name: classification.group_name || null,
-    tags: classification.tags || [],
-    pricing: classification.pricing || null,
-    price_note: classification.price_note || null,
-    pricing_tags: classification.pricing_tags || [],
-    company_size: classification.company_size || [],
-    ai_automation: classification.ai_automation || [],
-    integrations: classification.integrations || [],
-    research_status: 'complete',
-    research_completed_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+  // Step 8: Store raw_research + trigger Analyst
+  await logStep(executionId, `store_${tool.slug}`, 'started');
+
+  const rawResearch = {
+    version: (tool.research_version || 0) + 1,
+    collected_at: new Date().toISOString(),
+    scrape: scrapeData,
+    perplexity_general: perplexityResults.general,
+    perplexity_pricing: perplexityResults.pricing,
+    perplexity_reviews: perplexityResults.reviews,
+    perplexity_competitors: perplexityResults.competitors,
+    consolidation: {
+      response: consolidation,
+      gaps: consolidation.gaps || [],
+      contradictions: consolidation.contradictions || [],
+      model: config.consolidationModel
+    }
+  };
+
+  // Backward compat: update website_data with homepage info
+  const websiteData = {
+    url: tool.url,
+    logo: scrapeData.homepage?.meta?.logo || `https://www.google.com/s2/favicons?domain=${new URL(tool.url).hostname}&sz=128`,
+    name: scrapeData.homepage?.meta?.site_name || tool.name,
+    pageTitle: scrapeData.homepage?.title || '',
+    description: scrapeData.homepage?.description || '',
+    hasPricingPage: scrapeData.pricing_page?.found || false,
+    scrapedAt: new Date().toISOString()
   };
 
   const { error: updateError } = await supabase
     .from('tools')
-    .update(updatePayload)
+    .update({
+      raw_research: rawResearch,
+      research_sources: sourceTracker.toArray(),
+      research_version: rawResearch.version,
+      research_gaps: consolidation.gaps || [],
+      website_data: websiteData,
+      research_blob: generalText,
+      research_status: 'researched',
+      analysis_status: 'queued',
+      updated_at: new Date().toISOString()
+    })
     .eq('id', tool.id);
 
   if (updateError) throw new Error(`Failed to update tool: ${updateError.message}`);
 
-  console.log(`[research] Completed: ${tool.name} → ${classification.primary_category}`);
+  await logStep(executionId, `store_${tool.slug}`, 'completed', {
+    sources: sourceTracker.count,
+    research_version: rawResearch.version
+  });
+
+  console.log(`[research] Completed: ${tool.name} → researched (${sourceTracker.count} sources)`);
+
+  // Chain to Analyst Agent
+  await triggerAnalyst(tool, executionId, context);
 }
 
-// ----------------------------------------------------------------
-// Prompts
-// ----------------------------------------------------------------
+/**
+ * Trigger the Analyst Agent for this tool via the automations registry.
+ */
+async function triggerAnalyst(tool, executionId, context) {
+  const automations = context.automations || [];
+  const analyst = automations.find(a => a.id === 'agents/analyst');
 
-function buildPerplexityPrompt(tool, websiteData) {
-  const desc = websiteData.description || '';
-  const title = websiteData.pageTitle || tool.name;
+  if (!analyst) {
+    console.log(`[research] Analyst agent not discovered — skipping analysis chain for ${tool.name}`);
+    return;
+  }
 
-  return `Research the GTM/sales tool "${tool.name}" (${tool.url}).
+  console.log(`[research] Triggering Analyst Agent for ${tool.name}`);
 
-Website title: ${title}
-Website description: ${desc}
+  try {
+    const analystExec = await createExecution('agents/analyst');
 
-Provide a comprehensive analysis covering:
-1. **What it does** — core product purpose and key features
-2. **Pricing** — plans, pricing tiers, free trial availability. Be specific with dollar amounts if available.
-3. **Target audience** — company size, team roles, industries
-4. **Key integrations** — CRM, email, Slack, etc.
-5. **User sentiment** — strengths and weaknesses from reviews (G2, Capterra, Reddit)
-6. **Competitive positioning** — how it compares to alternatives
-7. **AI/automation capabilities** — any AI-native or AI-enhanced features
-8. **Unique selling points** — what makes it stand out
-
-Focus on factual, verifiable information. Include specific details where possible.`;
-}
-
-const SYNTHESIS_SYSTEM_PROMPT = `You are a GTM tool classification engine. Given website data and research, output a JSON object with structured fields for a tool directory.
-
-IMPORTANT: Output ONLY valid JSON. No markdown, no explanation, just the JSON object.
-
-The valid values for each field are:
-
-**primary_category** (pick ONE):
-intent-signals, ai-sales-assistants, lead-management, sales-engagement, crm-platforms, email-marketing, abm-platforms, data-enrichment, conversation-intelligence, content-creation, sales-enablement, analytics-reporting, meeting-scheduling, proposal-cpq, customer-success, marketing-automation, advertising, social-selling, competitive-intelligence, revenue-operations
-
-**group_name** (pick ONE):
-data-intelligence, sales-automation, marketing-platforms, revenue-tools, content-tools, operations
-
-**pricing** (pick ONE):
-free, freemium, starter, mid-market, enterprise, custom, usage-based
-
-**company_size** (pick 1-3):
-startup, smb, mid-market, enterprise
-
-**ai_automation** (pick 1-2):
-ai-native, ai-enhanced, automation-focused, traditional
-
-**pricing_tags** (pick 1-2):
-free-tier, affordable, mid-range, enterprise-pricing, usage-based, custom-pricing`;
-
-function buildSynthesisPrompt(tool, websiteData, researchText) {
-  return `Classify this GTM tool based on the research below.
-
-TOOL: ${tool.name} (${tool.url})
-WEBSITE TITLE: ${websiteData.pageTitle || 'N/A'}
-WEBSITE DESCRIPTION: ${websiteData.description || 'N/A'}
-
-RESEARCH:
-${researchText}
-
-Output a JSON object with these fields:
-{
-  "summary": "1-2 sentence description of what the tool does",
-  "category": "Human-readable category name (e.g. 'Marketing Automation')",
-  "primary_category": "slug from the allowed list",
-  "categories": ["primary + up to 3 related category slugs"],
-  "group_name": "slug from the allowed list",
-  "tags": ["5-10 lowercase tags like 'lead-generation', 'ai', 'crm'"],
-  "pricing": "slug from the allowed list",
-  "price_note": "specific pricing details if known, e.g. 'Starts at $49/mo'",
-  "pricing_tags": ["1-2 slugs from the allowed list"],
-  "company_size": ["1-3 slugs from the allowed list"],
-  "ai_automation": ["1-2 slugs from the allowed list"],
-  "integrations": ["lowercase integration names like 'hubspot', 'salesforce', 'slack'"]
-}`;
+    // Fire and forget — analyst runs async after research completes
+    analyst._module.execute({
+      executionId: analystExec.id,
+      trigger: 'agent-chain',
+      runtime: 'railway',
+      toolId: tool.id,
+      sourceExecutionId: executionId,
+      automations: context.automations
+    }).then(result => {
+      completeExecution(analystExec.id, 'success', null, result);
+      console.log(`[research] Analyst completed for ${tool.name}`);
+    }).catch(err => {
+      completeExecution(analystExec.id, 'failure', err.message);
+      console.error(`[research] Analyst failed for ${tool.name}:`, err.message);
+    });
+  } catch (err) {
+    console.error(`[research] Failed to trigger analyst for ${tool.name}:`, err.message);
+  }
 }

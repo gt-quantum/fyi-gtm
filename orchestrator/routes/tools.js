@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
 
   let query = supabase
     .from('tools')
-    .select('id, name, slug, url, research_status, category, primary_category, group_name, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority, tags, company_size, ai_automation')
+    .select('id, name, slug, url, research_status, analysis_status, category, primary_category, group_name, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority, tags, company_size, ai_automation')
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
 
@@ -80,7 +80,8 @@ router.put('/:id', async (req, res) => {
     'pricing', 'screenshot_url', 'group_name', 'tags', 'integrations',
     'company_size', 'ai_automation', 'summary',
     'price_note', 'pricing_tags', 'categories', 'seed_upvotes', 'featured',
-    'newsletter_status', 'newsletter_priority', 'featured_in_issue_id'
+    'newsletter_status', 'newsletter_priority', 'featured_in_issue_id',
+    'analysis_status', 'research_version'
   ];
 
   const updates = {};
@@ -141,7 +142,8 @@ router.post('/:id/research', async (req, res) => {
       executionId: execution.id,
       trigger: 'api',
       runtime: 'railway',
-      toolId
+      toolId,
+      automations
     });
     await completeExecution(execution.id, 'success', null, result);
   } catch (err) {
