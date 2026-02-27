@@ -86,7 +86,7 @@ module.exports = {
     const config = {
       mainModel: await getConfig('research_perplexity_main_model', 'sonar-pro'),
       targetedModel: await getConfig('research_perplexity_targeted_model', 'sonar'),
-      consolidationModel: await getConfig('research_consolidation_model', 'claude-haiku-4-5-20250514'),
+      consolidationModel: await getConfig('research_consolidation_model', 'claude-haiku-4-5-20251001'),
       consolidationProvider: await getConfig('research_consolidation_provider', 'anthropic'),
     };
 

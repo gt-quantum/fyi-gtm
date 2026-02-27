@@ -88,9 +88,9 @@ module.exports = {
     const config = {
       extractionModel: await getConfig('analyst_extraction_model', 'gpt-4.1-mini'),
       extractionProvider: await getConfig('analyst_extraction_provider', 'openai'),
-      classificationModel: await getConfig('analyst_classification_model', 'claude-haiku-4-5-20250514'),
+      classificationModel: await getConfig('analyst_classification_model', 'claude-haiku-4-5-20251001'),
       classificationProvider: await getConfig('analyst_classification_provider', 'anthropic'),
-      summaryModel: await getConfig('analyst_summary_model', 'claude-haiku-4-5-20250514'),
+      summaryModel: await getConfig('analyst_summary_model', 'claude-haiku-4-5-20251001'),
       summaryProvider: await getConfig('analyst_summary_provider', 'anthropic'),
     };
 
