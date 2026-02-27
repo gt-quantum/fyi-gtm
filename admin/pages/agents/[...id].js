@@ -553,12 +553,12 @@ export default function AgentDetail() {
               <p style={{ color: colors.dim, fontSize: 13 }}>No executions yet.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 100px 1fr', gap: 12, padding: '6px 12px', fontSize: 10, color: colors.dim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <span></span><span>Started</span><span>Duration</span><span>Error</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '40px 80px 1fr 100px 1fr', gap: 12, padding: '6px 12px', fontSize: 10, color: colors.dim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span></span><span>Status</span><span>Started</span><span>Duration</span><span>Error</span>
                 </div>
                 {executions.map(exec => (
                   <div key={exec.id} onClick={() => setSelectedExecution(selectedExecution === exec.id ? null : exec.id)} style={{
-                    display: 'grid', gridTemplateColumns: '40px 1fr 100px 1fr', gap: 12, padding: '8px 12px',
+                    display: 'grid', gridTemplateColumns: '40px 80px 1fr 100px 1fr', gap: 12, padding: '8px 12px',
                     background: selectedExecution === exec.id ? '#1a1a2e' : colors.surface, borderRadius: 6, cursor: 'pointer',
                     fontSize: 13, alignItems: 'center',
                     border: selectedExecution === exec.id ? '1px solid #312e81' : '1px solid transparent', transition: 'background 0.15s',
@@ -569,6 +569,7 @@ export default function AgentDetail() {
                     <span style={{ display: 'flex', justifyContent: 'center' }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: execStatusColors[exec.status] || colors.dim, animation: exec.status === 'running' ? 'pulse 1.5s infinite' : 'none' }} />
                     </span>
+                    <span style={{ color: execStatusColors[exec.status] || colors.dim, fontSize: 12, fontWeight: 500, textTransform: 'capitalize' }}>{exec.status || 'unknown'}</span>
                     <span>{timeAgo(exec.started_at)}</span>
                     <span style={{ color: colors.muted }}>{formatDuration(exec.duration_ms)}</span>
                     <span style={{ color: exec.error ? '#ef4444' : colors.dim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exec.error || '-'}</span>
