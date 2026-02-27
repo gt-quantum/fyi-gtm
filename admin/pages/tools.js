@@ -277,7 +277,7 @@ export default function Tools() {
         selectedIds={selectedIds}
         onSelect={handleSelect}
         onSelectAll={handleSelectAll}
-        onRowClick={(row) => router.push(`/tools/${row.id}?tab=directory`)}
+        onRowClick={(row) => router.push(`/tools/${row.id}`)}
         emptyMessage="No tools found. Add one above."
       />
 
