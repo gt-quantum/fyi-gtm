@@ -42,6 +42,20 @@ router.put('/', async (req, res) => {
   res.json(data);
 });
 
+// GET /api/config/scope/:scope — List config keys for a scope + global
+router.get('/scope/:scope(*)', async (req, res) => {
+  const scope = req.params.scope;
+  const { data, error } = await configDb
+    .from('settings')
+    .select('key, value, scope, description, encrypted, updated_at')
+    .in('scope', [scope, '_global'])
+    .order('scope')
+    .order('key');
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 // PUT /api/config/batch — Batch update config keys
 router.put('/batch', async (req, res) => {
   const { settings } = req.body; // Array of { key, value, scope?, description? }

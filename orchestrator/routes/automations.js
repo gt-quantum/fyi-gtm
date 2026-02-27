@@ -22,6 +22,34 @@ router.get('/', (req, res) => {
 // GET /api/automations/:id — Single automation detail
 router.get('/:id(*)', async (req, res) => {
   const id = req.params.id;
+
+  // Check in-memory discovered automations first
+  const automations = req.app.locals.automations || [];
+  const inMemory = automations.find(a => a.id === id);
+
+  if (inMemory) {
+    // Merge with DB data for editable fields (enabled, schedule, tags)
+    const { data: dbRow } = await coreDb
+      .from('automations')
+      .select('enabled, schedule, tags')
+      .eq('id', id)
+      .single();
+
+    const merged = {
+      id: inMemory.id,
+      name: inMemory.name,
+      description: inMemory.description,
+      type: inMemory.type,
+      schedule: dbRow?.schedule || inMemory.schedule,
+      enabled: dbRow?.enabled ?? inMemory.enabled,
+      tags: dbRow?.tags || inMemory.tags,
+      runtime: inMemory.runtime,
+      flow_definition: inMemory.flow_definition || null,
+    };
+    return res.json(merged);
+  }
+
+  // Fall back to DB-only for automations no longer on disk
   const { data, error } = await coreDb
     .from('automations')
     .select('*')

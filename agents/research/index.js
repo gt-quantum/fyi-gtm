@@ -23,6 +23,23 @@ module.exports = {
   tags: ['research', 'tools'],
   runtime: 'railway',
 
+  flow: {
+    steps: [
+      { id: 'fetch_queue', label: 'Fetch Queued Tools', type: 'action', icon: 'database' },
+      { id: 'scrape', label: 'Scrape Website', type: 'action', icon: 'globe' },
+      { id: 'perplexity', label: 'Perplexity Research', type: 'ai', icon: 'sparkle' },
+      { id: 'synthesis', label: 'Claude Synthesis', type: 'ai', icon: 'sparkle' },
+      { id: 'update_tool', label: 'Update Tool Record', type: 'output', icon: 'check' },
+    ],
+    edges: [
+      { from: 'fetch_queue', to: 'scrape' },
+      { from: 'scrape', to: 'perplexity' },
+      { from: 'perplexity', to: 'synthesis' },
+      { from: 'synthesis', to: 'update_tool' },
+      { from: 'update_tool', to: 'scrape', label: 'next tool' },
+    ],
+  },
+
   /**
    * Validate environment before running.
    */

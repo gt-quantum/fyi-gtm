@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import StatusBadge from '../../components/StatusBadge';
+import TabBar from '../../components/TabBar';
 import { colors, typeColors, cronToHuman, formatDuration, timeAgo } from '../../lib/theme';
 import dagre from 'dagre';
 import {
@@ -155,12 +156,19 @@ function buildProgressiveStatuses(uniqueSteps, upToIndex) {
   return map;
 }
 
-const statusColors = { completed: '#22c55e', failed: '#ef4444', started: '#3b82f6', running: '#3b82f6', success: '#22c55e', failure: '#ef4444' };
+const execStatusColors = { completed: '#22c55e', failed: '#ef4444', started: '#3b82f6', running: '#3b82f6', success: '#22c55e', failure: '#ef4444' };
+
+const tabs = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'executions', label: 'Executions' },
+  { key: 'configuration', label: 'Configuration' },
+];
 
 export default function AgentDetail() {
   const router = useRouter();
   const automationId = router.query.id ? router.query.id.join('/') : null;
 
+  const [activeTab, setActiveTab] = useState('overview');
   const [automation, setAutomation] = useState(null);
   const [executions, setExecutions] = useState([]);
   const [selectedExecution, setSelectedExecution] = useState(null);
@@ -171,6 +179,8 @@ export default function AgentDetail() {
   const [triggering, setTriggering] = useState(false);
   const [triggerResult, setTriggerResult] = useState(null);
   const [toggling, setToggling] = useState(false);
+  const [configKeys, setConfigKeys] = useState([]);
+  const [configLoading, setConfigLoading] = useState(false);
 
   const uniqueSteps = useMemo(() => deduplicateSteps(rawSteps), [rawSteps]);
 
@@ -211,6 +221,22 @@ export default function AgentDetail() {
     }
     fetchSteps();
   }, [selectedExecution]);
+
+  // Fetch config when tab switches to configuration
+  useEffect(() => {
+    if (activeTab !== 'configuration' || !automationId) return;
+    async function fetchConfig() {
+      setConfigLoading(true);
+      try {
+        const res = await fetch(`/api/config/scope/${automationId}`);
+        if (res.ok) setConfigKeys(await res.json());
+      } catch (err) {
+        console.error('Failed to load config:', err);
+      }
+      setConfigLoading(false);
+    }
+    fetchConfig();
+  }, [activeTab, automationId]);
 
   const stepStatuses = useMemo(() => {
     if (playbackIndex < 0 || uniqueSteps.length === 0) return null;
@@ -263,6 +289,19 @@ export default function AgentDetail() {
     setToggling(false);
   }
 
+  async function handleConfigSave(key, value, scope) {
+    try {
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value, scope }),
+      });
+      if (res.ok) {
+        setConfigKeys(prev => prev.map(k => k.key === key && k.scope === scope ? { ...k, value } : k));
+      }
+    } catch (err) { console.error('Config save failed:', err); }
+  }
+
   if (loading) return <Layout><p style={{ color: colors.dim, marginTop: 40 }}>Loading...</p></Layout>;
   if (error || !automation) return (
     <Layout>
@@ -270,6 +309,8 @@ export default function AgentDetail() {
       <p style={{ color: colors.error, marginTop: 16 }}>{error || 'Not found'}</p>
     </Layout>
   );
+
+  const flowDef = automation.flow_definition;
 
   return (
     <Layout>
@@ -283,6 +324,7 @@ export default function AgentDetail() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>{automation.name}</h1>
         <StatusBadge status={automation.type} />
+        <StatusBadge status={automation.runtime || 'railway'} />
         <StatusBadge status={automation.enabled ? 'active' : 'paused'} />
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -311,148 +353,310 @@ export default function AgentDetail() {
         <div style={{ fontSize: 12, color: triggerResult.ok ? '#4ade80' : '#ef4444', marginBottom: 8 }}>{triggerResult.message}</div>
       )}
 
-      {automation.description && <p style={{ color: colors.muted, fontSize: 13, marginBottom: 4 }}>{automation.description}</p>}
-      <div style={{ display: 'flex', gap: 20, fontSize: 12, color: colors.dim, marginBottom: 24, flexWrap: 'wrap' }}>
-        <span>Schedule: <span style={{ color: colors.muted }}>{cronToHuman(automation.schedule)}</span></span>
-        <span>ID: <span style={{ color: colors.muted, fontFamily: "'IBM Plex Mono', monospace" }}>{automation.id}</span></span>
-        <span>Runtime: <span style={{ color: colors.muted }}>{automation.runtime}</span></span>
-      </div>
+      <div style={{ marginBottom: 20 }} />
 
-      {/* Workflow Diagram */}
-      <Section title="Workflow">
-        {nodes.length > 0 ? (
-          <div style={{ height: 340, background: '#0c0c0e', borderRadius: 12, border: `1px solid ${colors.border}`, position: 'relative' }}>
-            <ReactFlow
-              nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
-              fitView fitViewOptions={{ padding: 0.3 }}
-              nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
-              panOnDrag zoomOnScroll zoomOnPinch zoomOnDoubleClick minZoom={0.3} maxZoom={3}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1a1a1a" />
-              <Controls showInteractive={false} position="top-right" />
-            </ReactFlow>
-            <div style={{ position: 'absolute', bottom: 8, left: 12, fontSize: 10, color: colors.dim, pointerEvents: 'none' }}>
-              Scroll to zoom &middot; Drag to pan
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: 32, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
-            <p style={{ color: colors.dim }}>No workflow definition</p>
-            <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>
-              Add a <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>flow</code> export to see the diagram.
-            </p>
-          </div>
-        )}
-      </Section>
+      {/* Tabs */}
+      <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
-      {/* Execution Walkthrough */}
-      {selectedExecution && uniqueSteps.length > 0 && (
-        <Section title="Execution Walkthrough">
-          <div style={{ background: '#0c0c0e', borderRadius: 12, border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
-            {/* Playback controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: `1px solid ${colors.border}` }}>
-              <PbBtn onClick={() => goToStep(0)} disabled={playbackIndex <= 0}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3v8M5 7l6-4v8L5 7z" fill="currentColor" transform="scale(-1,1) translate(-14,0)" /></svg>
-              </PbBtn>
-              <PbBtn onClick={() => goToStep(playbackIndex - 1)} disabled={playbackIndex <= 0}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L4 7l5 4V3z" fill="currentColor" /></svg>
-              </PbBtn>
-              <span style={{ fontSize: 12, color: colors.text, minWidth: 80, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
-                Step {playbackIndex + 1} / {uniqueSteps.length}
-              </span>
-              <PbBtn onClick={() => goToStep(playbackIndex + 1)} disabled={playbackIndex >= uniqueSteps.length - 1}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l5 4-5 4V3z" fill="currentColor" /></svg>
-              </PbBtn>
-              <PbBtn onClick={() => goToStep(uniqueSteps.length - 1)} disabled={playbackIndex >= uniqueSteps.length - 1}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3v8M5 7l6-4v8L5 7z" fill="currentColor" /></svg>
-              </PbBtn>
-            </div>
-
-            {/* Progress bar */}
-            <div style={{ display: 'flex', gap: 2, padding: '8px 14px' }}>
-              {uniqueSteps.map((step, i) => (
-                <div key={step.id} onClick={() => goToStep(i)} style={{
-                  flex: 1, height: 4, borderRadius: 2, cursor: 'pointer', transition: 'background 0.2s',
-                  background: i <= playbackIndex ? (step.status === 'failed' ? '#ef4444' : step.status === 'started' ? '#3b82f6' : '#22c55e') : '#262626',
-                  outline: i === playbackIndex ? '2px solid rgba(255,255,255,0.3)' : 'none', outlineOffset: 1,
-                }} title={step.step_name} />
-              ))}
-            </div>
-
-            {/* Step list */}
-            <div style={{ padding: 8 }}>
-              {uniqueSteps.map((step, i) => (
-                <div key={step.id} onClick={() => goToStep(i)} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
-                  background: i === playbackIndex ? '#1a1a2e' : 'transparent',
-                  border: i === playbackIndex ? '1px solid #312e81' : '1px solid transparent',
-                  transition: 'all 0.15s', opacity: i <= playbackIndex ? 1 : 0.4,
-                }}>
-                  <span style={{ display: 'flex', marginTop: 1, flexShrink: 0 }}>
-                    {i <= playbackIndex ? (statusIcons[step.status] || <span style={{ width: 14, height: 14, borderRadius: '50%', background: colors.dim, display: 'inline-block' }} />)
-                      : <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#262626', display: 'inline-block' }} />}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 500 }}>{step.step_name}</span>
-                      <span style={{
-                        fontSize: 10, padding: '1px 6px', borderRadius: 3,
-                        background: step.status === 'completed' ? '#052e16' : step.status === 'failed' ? '#450a0a' : '#172554',
-                        color: step.status === 'completed' ? '#4ade80' : step.status === 'failed' ? '#fca5a5' : '#60a5fa',
-                      }}>{step.status}</span>
-                      {step.duration_ms != null && (
-                        <span style={{ fontSize: 11, color: colors.dim, marginLeft: 'auto' }}>{formatDuration(step.duration_ms)}</span>
-                      )}
-                    </div>
-                    {i === playbackIndex && step.metadata && Object.keys(step.metadata).length > 0 && (
-                      <div style={{ marginTop: 6, padding: '6px 8px', background: '#111', borderRadius: 4, border: `1px solid ${colors.border}` }}>
-                        {Object.entries(step.metadata).map(([key, val]) => (
-                          <div key={key} style={{ display: 'flex', gap: 8, fontSize: 11, padding: '2px 0' }}>
-                            <span style={{ color: colors.muted, minWidth: 80 }}>{key}:</span>
-                            <span style={{ color: colors.text, wordBreak: 'break-all' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Details */}
+          <Section title="Details">
+            {automation.description && <p style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>{automation.description}</p>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              <DetailItem label="Schedule" value={cronToHuman(automation.schedule)} />
+              <DetailItem label="ID" value={automation.id} mono />
+              <DetailItem label="Runtime" value={automation.runtime || 'railway'} />
+              {automation.tags?.length > 0 && (
+                <DetailItem label="Tags" value={
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {automation.tags.map(t => (
+                      <span key={t} style={{ fontSize: 11, padding: '1px 6px', borderRadius: 3, background: '#1a1a2e', color: '#818cf8' }}>{t}</span>
+                    ))}
                   </div>
-                </div>
-              ))}
+                } />
+              )}
             </div>
-          </div>
-        </Section>
+          </Section>
+
+          {/* Workflow Diagram */}
+          <Section title="Workflow">
+            {nodes.length > 0 ? (
+              <div style={{ height: 340, background: '#0c0c0e', borderRadius: 12, border: `1px solid ${colors.border}`, position: 'relative' }}>
+                <ReactFlow
+                  nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+                  fitView fitViewOptions={{ padding: 0.3 }}
+                  nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
+                  panOnDrag zoomOnScroll zoomOnPinch zoomOnDoubleClick minZoom={0.3} maxZoom={3}
+                >
+                  <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1a1a1a" />
+                  <Controls showInteractive={false} position="top-right" />
+                </ReactFlow>
+                <div style={{ position: 'absolute', bottom: 8, left: 12, fontSize: 10, color: colors.dim, pointerEvents: 'none' }}>
+                  Scroll to zoom &middot; Drag to pan
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: 32, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
+                <p style={{ color: colors.dim }}>No workflow definition</p>
+                <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>
+                  Add a <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>flow</code> export to see the diagram.
+                </p>
+              </div>
+            )}
+          </Section>
+
+          {/* Process Steps */}
+          {flowDef?.steps?.length > 0 && (
+            <Section title="Process Steps">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {flowDef.steps.map((step, i) => {
+                  const tc = typeColors[step.type] || typeColors.action;
+                  const icon = stepIcons[step.icon] || stepIcons.gear;
+                  const inEdges = flowDef.edges?.filter(e => e.to === step.id) || [];
+                  const outEdges = flowDef.edges?.filter(e => e.from === step.id) || [];
+                  return (
+                    <div key={step.id} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px',
+                      background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}`,
+                    }}>
+                      <span style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                        background: tc.bg, color: tc.text, fontSize: 12, fontWeight: 700,
+                      }}>{i + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                          <span style={{ display: 'flex', color: tc.text }}>{icon}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{step.label}</span>
+                          <span style={{
+                            fontSize: 10, padding: '1px 6px', borderRadius: 3,
+                            background: tc.bg, color: tc.text, border: `1px solid ${tc.border}`,
+                          }}>{step.type || 'action'}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 11, color: colors.dim, marginTop: 4 }}>
+                          {inEdges.length > 0 && (
+                            <span>From: {inEdges.map(e => {
+                              const src = flowDef.steps.find(s => s.id === e.from);
+                              return src ? src.label : e.from;
+                            }).join(', ')}{inEdges.some(e => e.label) ? ` (${inEdges.find(e => e.label)?.label})` : ''}</span>
+                          )}
+                          {outEdges.length > 0 && (
+                            <span>To: {outEdges.map(e => {
+                              const tgt = flowDef.steps.find(s => s.id === e.to);
+                              return tgt ? tgt.label : e.to;
+                            }).join(', ')}{outEdges.some(e => e.label) ? ` (${outEdges.find(e => e.label)?.label})` : ''}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+        </>
       )}
 
-      {/* Execution History */}
-      <Section title="Execution History">
-        {executions.length === 0 ? (
-          <p style={{ color: colors.dim, fontSize: 13 }}>No executions yet.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 100px 1fr', gap: 12, padding: '6px 12px', fontSize: 10, color: colors.dim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <span></span><span>Started</span><span>Duration</span><span>Error</span>
-            </div>
-            {executions.map(exec => (
-              <div key={exec.id} onClick={() => setSelectedExecution(selectedExecution === exec.id ? null : exec.id)} style={{
-                display: 'grid', gridTemplateColumns: '40px 1fr 100px 1fr', gap: 12, padding: '8px 12px',
-                background: selectedExecution === exec.id ? '#1a1a2e' : colors.surface, borderRadius: 6, cursor: 'pointer',
-                fontSize: 13, alignItems: 'center',
-                border: selectedExecution === exec.id ? '1px solid #312e81' : '1px solid transparent', transition: 'background 0.15s',
-              }}
-                onMouseEnter={(e) => { if (selectedExecution !== exec.id) e.currentTarget.style.background = '#1a1a1a'; }}
-                onMouseLeave={(e) => { if (selectedExecution !== exec.id) e.currentTarget.style.background = colors.surface; }}
-              >
-                <span style={{ display: 'flex', justifyContent: 'center' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusColors[exec.status] || colors.dim, animation: exec.status === 'running' ? 'pulse 1.5s infinite' : 'none' }} />
-                </span>
-                <span>{timeAgo(exec.started_at)}</span>
-                <span style={{ color: colors.muted }}>{formatDuration(exec.duration_ms)}</span>
-                <span style={{ color: exec.error ? '#ef4444' : colors.dim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exec.error || '-'}</span>
+      {/* Executions Tab */}
+      {activeTab === 'executions' && (
+        <>
+          {/* Execution Walkthrough */}
+          {selectedExecution && uniqueSteps.length > 0 && (
+            <Section title="Execution Walkthrough">
+              <div style={{ background: '#0c0c0e', borderRadius: 12, border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+                {/* Playback controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: `1px solid ${colors.border}` }}>
+                  <PbBtn onClick={() => goToStep(0)} disabled={playbackIndex <= 0}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3v8M5 7l6-4v8L5 7z" fill="currentColor" transform="scale(-1,1) translate(-14,0)" /></svg>
+                  </PbBtn>
+                  <PbBtn onClick={() => goToStep(playbackIndex - 1)} disabled={playbackIndex <= 0}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L4 7l5 4V3z" fill="currentColor" /></svg>
+                  </PbBtn>
+                  <span style={{ fontSize: 12, color: colors.text, minWidth: 80, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                    Step {playbackIndex + 1} / {uniqueSteps.length}
+                  </span>
+                  <PbBtn onClick={() => goToStep(playbackIndex + 1)} disabled={playbackIndex >= uniqueSteps.length - 1}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l5 4-5 4V3z" fill="currentColor" /></svg>
+                  </PbBtn>
+                  <PbBtn onClick={() => goToStep(uniqueSteps.length - 1)} disabled={playbackIndex >= uniqueSteps.length - 1}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3v8M5 7l6-4v8L5 7z" fill="currentColor" /></svg>
+                  </PbBtn>
+                </div>
+
+                {/* Progress bar */}
+                <div style={{ display: 'flex', gap: 2, padding: '8px 14px' }}>
+                  {uniqueSteps.map((step, i) => (
+                    <div key={step.id} onClick={() => goToStep(i)} style={{
+                      flex: 1, height: 4, borderRadius: 2, cursor: 'pointer', transition: 'background 0.2s',
+                      background: i <= playbackIndex ? (step.status === 'failed' ? '#ef4444' : step.status === 'started' ? '#3b82f6' : '#22c55e') : '#262626',
+                      outline: i === playbackIndex ? '2px solid rgba(255,255,255,0.3)' : 'none', outlineOffset: 1,
+                    }} title={step.step_name} />
+                  ))}
+                </div>
+
+                {/* Step list */}
+                <div style={{ padding: 8 }}>
+                  {uniqueSteps.map((step, i) => (
+                    <div key={step.id} onClick={() => goToStep(i)} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
+                      background: i === playbackIndex ? '#1a1a2e' : 'transparent',
+                      border: i === playbackIndex ? '1px solid #312e81' : '1px solid transparent',
+                      transition: 'all 0.15s', opacity: i <= playbackIndex ? 1 : 0.4,
+                    }}>
+                      <span style={{ display: 'flex', marginTop: 1, flexShrink: 0 }}>
+                        {i <= playbackIndex ? (statusIcons[step.status] || <span style={{ width: 14, height: 14, borderRadius: '50%', background: colors.dim, display: 'inline-block' }} />)
+                          : <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#262626', display: 'inline-block' }} />}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>{step.step_name}</span>
+                          <span style={{
+                            fontSize: 10, padding: '1px 6px', borderRadius: 3,
+                            background: step.status === 'completed' ? '#052e16' : step.status === 'failed' ? '#450a0a' : '#172554',
+                            color: step.status === 'completed' ? '#4ade80' : step.status === 'failed' ? '#fca5a5' : '#60a5fa',
+                          }}>{step.status}</span>
+                          {step.duration_ms != null && (
+                            <span style={{ fontSize: 11, color: colors.dim, marginLeft: 'auto' }}>{formatDuration(step.duration_ms)}</span>
+                          )}
+                        </div>
+                        {i === playbackIndex && step.metadata && Object.keys(step.metadata).length > 0 && (
+                          <div style={{ marginTop: 6, padding: '6px 8px', background: '#111', borderRadius: 4, border: `1px solid ${colors.border}` }}>
+                            {Object.entries(step.metadata).map(([key, val]) => (
+                              <div key={key} style={{ display: 'flex', gap: 8, fontSize: 11, padding: '2px 0' }}>
+                                <span style={{ color: colors.muted, minWidth: 80 }}>{key}:</span>
+                                <span style={{ color: colors.text, wordBreak: 'break-all' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </Section>
+            </Section>
+          )}
+
+          {/* Execution History */}
+          <Section title="Execution History">
+            {executions.length === 0 ? (
+              <p style={{ color: colors.dim, fontSize: 13 }}>No executions yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 100px 1fr', gap: 12, padding: '6px 12px', fontSize: 10, color: colors.dim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span></span><span>Started</span><span>Duration</span><span>Error</span>
+                </div>
+                {executions.map(exec => (
+                  <div key={exec.id} onClick={() => setSelectedExecution(selectedExecution === exec.id ? null : exec.id)} style={{
+                    display: 'grid', gridTemplateColumns: '40px 1fr 100px 1fr', gap: 12, padding: '8px 12px',
+                    background: selectedExecution === exec.id ? '#1a1a2e' : colors.surface, borderRadius: 6, cursor: 'pointer',
+                    fontSize: 13, alignItems: 'center',
+                    border: selectedExecution === exec.id ? '1px solid #312e81' : '1px solid transparent', transition: 'background 0.15s',
+                  }}
+                    onMouseEnter={(e) => { if (selectedExecution !== exec.id) e.currentTarget.style.background = '#1a1a1a'; }}
+                    onMouseLeave={(e) => { if (selectedExecution !== exec.id) e.currentTarget.style.background = colors.surface; }}
+                  >
+                    <span style={{ display: 'flex', justifyContent: 'center' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: execStatusColors[exec.status] || colors.dim, animation: exec.status === 'running' ? 'pulse 1.5s infinite' : 'none' }} />
+                    </span>
+                    <span>{timeAgo(exec.started_at)}</span>
+                    <span style={{ color: colors.muted }}>{formatDuration(exec.duration_ms)}</span>
+                    <span style={{ color: exec.error ? '#ef4444' : colors.dim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exec.error || '-'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        </>
+      )}
+
+      {/* Configuration Tab */}
+      {activeTab === 'configuration' && (
+        <Section title="Configuration">
+          {configLoading ? (
+            <p style={{ color: colors.dim, fontSize: 13 }}>Loading configuration...</p>
+          ) : configKeys.length === 0 ? (
+            <div style={{ padding: 32, textAlign: 'center', background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}` }}>
+              <p style={{ color: colors.dim }}>No configuration keys</p>
+              <p style={{ color: colors.subtle, fontSize: 12, marginTop: 4 }}>
+                Config keys scoped to <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>{automationId}</code> or <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>_global</code> will appear here.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {configKeys.map(cfg => (
+                <ConfigRow key={`${cfg.scope}:${cfg.key}`} cfg={cfg} onSave={handleConfigSave} />
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
     </Layout>
+  );
+}
+
+function ConfigRow({ cfg, onSave }) {
+  const [value, setValue] = useState(typeof cfg.value === 'string' ? cfg.value : JSON.stringify(cfg.value));
+  const [dirty, setDirty] = useState(false);
+
+  function handleChange(e) {
+    setValue(e.target.value);
+    setDirty(true);
+  }
+
+  function handleSave() {
+    let parsed = value;
+    try { parsed = JSON.parse(value); } catch {}
+    onSave(cfg.key, parsed, cfg.scope);
+    setDirty(false);
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+      background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}`,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{cfg.key}</span>
+          <span style={{
+            fontSize: 10, padding: '1px 6px', borderRadius: 3,
+            background: cfg.scope === '_global' ? '#1e3a5f' : '#1a1a2e',
+            color: cfg.scope === '_global' ? '#60a5fa' : '#818cf8',
+          }}>{cfg.scope}</span>
+        </div>
+        {cfg.description && <p style={{ fontSize: 11, color: colors.dim, margin: 0 }}>{cfg.description}</p>}
+      </div>
+      <input
+        value={value}
+        onChange={handleChange}
+        style={{
+          width: 260, padding: '5px 8px', fontSize: 12, borderRadius: 4,
+          background: '#111', border: `1px solid ${dirty ? '#2563eb' : colors.border}`,
+          color: colors.text, fontFamily: "'IBM Plex Mono', monospace",
+          outline: 'none',
+        }}
+      />
+      {dirty && (
+        <button onClick={handleSave} style={{
+          padding: '4px 10px', fontSize: 11, fontWeight: 500, borderRadius: 4,
+          background: '#1e3a5f', border: '1px solid #2563eb', color: '#60a5fa', cursor: 'pointer',
+        }}>Save</button>
+      )}
+    </div>
+  );
+}
+
+function DetailItem({ label, value, mono }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: colors.dim, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13, color: colors.muted, ...(mono ? { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 } : {}) }}>
+        {value}
+      </div>
+    </div>
   );
 }
 

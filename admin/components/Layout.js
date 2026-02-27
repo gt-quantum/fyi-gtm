@@ -70,15 +70,7 @@ export default function Layout({ children }) {
         {/* Brand */}
         <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${colors.border}` }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            <img src="/mascot.png" alt="FYI GTM" width={28} height={28} style={{ borderRadius: 8 }} />
             <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>FYI GTM</span>
           </Link>
         </div>
