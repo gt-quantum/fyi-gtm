@@ -1,0 +1,16 @@
+{
+  "name": "fyi-gtm",
+  "version": "1.0.0",
+  "description": "FYI GTM — unified agent platform for GTM tool research, directory, and newsletter",
+  "private": true,
+  "workspaces": [
+    "orchestrator",
+    "admin"
+  ],
+  "scripts": {
+    "dev:orchestrator": "cd orchestrator && npm run dev",
+    "dev:admin": "cd admin && npm run dev"
+  },
+  "author": "",
+  "license": "MIT"
+}
