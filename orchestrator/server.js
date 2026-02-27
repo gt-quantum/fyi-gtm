@@ -46,6 +46,7 @@ app.use('/api/tips', require('./routes/tips'));
 app.use('/api/directory', require('./routes/directory'));
 app.use('/api/automations', require('./routes/automations'));
 app.use('/api/executions', require('./routes/executions'));
+app.use('/api/integrations', require('./routes/integrations'));
 
 // Startup
 async function start() {

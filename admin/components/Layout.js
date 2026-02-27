@@ -27,6 +27,7 @@ const navGroups = [
     label: 'Platform',
     items: [
       { href: '/agents', label: 'Agents', icon: 'bot' },
+      { href: '/integrations', label: 'Integrations', icon: 'plug' },
     ],
   },
 ];
@@ -39,6 +40,7 @@ const icons = {
   tag: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8.5V3a1 1 0 011-1h5.5L14 7.5 8.5 13 2 8.5z" stroke="currentColor" strokeWidth="1.3" /><circle cx="5.5" cy="5.5" r="1" fill="currentColor" /></svg>,
   bulb: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1a4.5 4.5 0 00-2 8.5V12h4V9.5A4.5 4.5 0 008 1z" stroke="currentColor" strokeWidth="1.2" /><path d="M6 13.5h4M6.5 15h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>,
   bot: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="5" width="10" height="8" rx="2" stroke="currentColor" strokeWidth="1.2" /><circle cx="6" cy="9" r="1" fill="currentColor" /><circle cx="10" cy="9" r="1" fill="currentColor" /><path d="M8 2v3M5 3h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>,
+  plug: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2v4M10 2v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /><rect x="4" y="6" width="8" height="3" rx="1" stroke="currentColor" strokeWidth="1.2" /><path d="M8 9v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /><path d="M5 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>,
 };
 
 export default function Layout({ children }) {
@@ -69,7 +71,7 @@ export default function Layout({ children }) {
         {/* Brand */}
         <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${colors.border}` }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/mascot.png" alt="FYI GTM" width={28} height={28} style={{ borderRadius: 8 }} />
+            <img src="/mascot.png" alt="FYI GTM" width={28} height={28} style={{ borderRadius: 8, objectFit: 'contain' }} />
             <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>FYI GTM</span>
           </Link>
         </div>
