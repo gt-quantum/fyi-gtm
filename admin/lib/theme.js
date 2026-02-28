@@ -36,6 +36,7 @@ export const statusColors = {
   scheduled: { bg: '#1e3a5f', text: '#60a5fa' },
   sent: { bg: '#052e16', text: '#4ade80' },
   'no entry': { bg: '#1a1a1a', text: '#71717a' },
+  writing: { bg: '#164e63', text: '#22d3ee' },
   staged: { bg: '#422006', text: '#fbbf24' },
   agent: { bg: '#2e1065', text: '#c084fc' },
   railway: { bg: '#1e3a5f', text: '#60a5fa' },

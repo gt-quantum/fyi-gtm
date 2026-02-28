@@ -156,6 +156,56 @@ router.post('/publish', async (req, res) => {
   }
 });
 
+// POST /api/directory/write — Trigger Directory Writer agent for selected tools
+// Used for manual retriggers, regeneration after config changes, or writing after failed attempts.
+router.post('/write', async (req, res) => {
+  const { toolIds } = req.body;
+  if (!Array.isArray(toolIds) || toolIds.length === 0) {
+    return res.status(400).json({ error: 'toolIds array is required' });
+  }
+
+  try {
+    // Set directory_status = 'queued' for each tool
+    const { error: updateErr } = await supabase
+      .from('tools')
+      .update({ directory_status: 'queued', updated_at: new Date().toISOString() })
+      .in('id', toolIds);
+
+    if (updateErr) throw new Error(updateErr.message);
+
+    // Find and trigger the Directory Writer agent
+    const automations = req.app.locals.automations || [];
+    const directoryAgent = automations.find(a => a.id === 'agents/directory');
+    if (!directoryAgent) {
+      return res.status(500).json({ error: 'Directory Writer agent not discovered.' });
+    }
+
+    const { createExecution, completeExecution } = require('../logger');
+    const execution = await createExecution(directoryAgent.id);
+
+    // Respond immediately — writing runs async
+    res.json({ success: true, executionId: execution.id, count: toolIds.length });
+
+    // Fire and forget
+    directoryAgent._module.execute({
+      executionId: execution.id,
+      trigger: 'api',
+      runtime: 'railway',
+      automations,
+    }).then(result => {
+      completeExecution(execution.id, 'success', null, result);
+    }).catch(err => {
+      console.error('[directory] Write failed:', err.message);
+      completeExecution(execution.id, 'failure', err.message);
+    });
+  } catch (err) {
+    console.error('[directory] Write trigger error:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
 // POST /api/directory/generate — Generate a directory entry from a tool's structured data
 // Maps tool fields (snake_case) → Astro frontmatter (camelCase)
 router.post('/generate', async (req, res) => {

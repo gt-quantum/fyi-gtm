@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
 
   let query = supabase
     .from('tools')
-    .select('id, name, slug, url, research_status, analysis_status, category, primary_category, group_name, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority, tags, company_size, ai_automation, best_for, summary')
+    .select('id, name, slug, url, research_status, analysis_status, directory_status, category, primary_category, group_name, pricing, created_at, updated_at, screenshot_url, newsletter_status, newsletter_priority, tags, company_size, ai_automation, best_for, summary')
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
 
@@ -81,7 +81,7 @@ router.put('/:id', async (req, res) => {
     'company_size', 'ai_automation', 'summary', 'best_for',
     'price_note', 'pricing_tags', 'categories', 'seed_upvotes', 'featured',
     'newsletter_status', 'newsletter_priority', 'featured_in_issue_id',
-    'analysis_status', 'research_version',
+    'analysis_status', 'research_version', 'directory_status', 'directory_completed_at',
     // Structured JSONB fields (from analyst agent)
     'key_features', 'use_cases', 'recent_developments',
     'pros_cons', 'user_sentiment', 'ratings',

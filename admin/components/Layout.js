@@ -16,6 +16,12 @@ const navGroups = [
     ],
   },
   {
+    label: 'Directory',
+    items: [
+      { href: '/directory', label: 'Entries', icon: 'file' },
+    ],
+  },
+  {
     label: 'Newsletter',
     items: [
       { href: '/newsletter', label: 'Issues', icon: 'mail' },

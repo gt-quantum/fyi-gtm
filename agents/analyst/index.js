@@ -145,6 +145,22 @@ module.exports = {
 
     try {
       const result = await analyzeTool(tool, executionId, config);
+
+      // Auto-trigger Directory Writer if analysis succeeded
+      if (result.analysis_status === 'complete' && context.automations) {
+        const directoryAgent = context.automations.find(a => a.id === 'agents/directory');
+        if (directoryAgent) {
+          console.log(`[analyst] Triggering Directory Writer for ${tool.name}`);
+          directoryAgent._module.execute({
+            executionId: null,
+            trigger: 'chained',
+            runtime: context.runtime,
+            toolId: tool.id,
+            automations: context.automations,
+          }).catch(err => console.error('[analyst] Directory writer trigger failed:', err.message));
+        }
+      }
+
       return { processed: 1, tool: tool.name, ...result };
     } catch (err) {
       console.error(`[analyst] Failed for ${tool.slug}:`, err.message);
@@ -324,6 +340,15 @@ async function analyzeTool(tool, executionId, config) {
   });
 
   console.log(`[analyst] Completed: ${tool.name} → ${allExtracted.primary_category} (confidence: ${confidence_scores.overall}, status: ${analysisStatus})`);
+
+  // Queue for Directory Writer if analysis succeeded
+  if (analysisStatus === 'complete') {
+    await supabase
+      .from('tools')
+      .update({ directory_status: 'queued', updated_at: new Date().toISOString() })
+      .eq('id', tool.id);
+    console.log(`[analyst] Queued ${tool.name} for directory writing`);
+  }
 
   return {
     primary_category: allExtracted.primary_category,
