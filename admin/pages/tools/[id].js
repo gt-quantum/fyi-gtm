@@ -463,10 +463,13 @@ export default function ToolDetail() {
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Pipeline stages */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             <PipelineStage label="Research" status={tool.research_status}
               statusColor={tool.research_status === 'complete' ? '#22c55e' : tool.research_status === 'researching' ? '#f59e0b' : tool.research_status === 'failed' ? '#ef4444' : colors.dim}
-              detail={tool.research_completed_at ? `Completed ${new Date(tool.research_completed_at).toLocaleDateString()}` : null} />
+              detail={tool.research_completed_at ? `Completed ${new Date(tool.research_completed_at).toLocaleDateString()}` : tool.research_version ? `v${tool.research_version}` : null} />
+            <PipelineStage label="Analysis" status={tool.analysis_status || 'pending'}
+              statusColor={tool.analysis_status === 'complete' ? '#22c55e' : tool.analysis_status === 'analyzing' ? '#a78bfa' : tool.analysis_status === 'needs_review' ? '#fb923c' : tool.analysis_status === 'failed' ? '#ef4444' : colors.dim}
+              detail={tool.analysis_completed_at ? `Completed ${new Date(tool.analysis_completed_at).toLocaleDateString()}` : tool.confidence_scores?.overall ? `Confidence: ${Math.round(tool.confidence_scores.overall * 100)}%` : null} />
             <PipelineStage label="Directory" status={entry ? entry.status : 'no entry'}
               statusColor={entry?.status === 'published' ? '#22c55e' : entry?.status === 'staged' ? '#f59e0b' : entry?.status === 'approved' ? '#3b82f6' : entry ? '#818cf8' : colors.dim}
               detail={entry ? `${entry.status} entry` : 'Not created yet'} />
@@ -652,6 +655,24 @@ export default function ToolDetail() {
               </div>
             </div>
           </SectionCard>
+
+          {/* Metadata — read-only fields for visibility */}
+          <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Metadata</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+              <MetaField label="Category (human-readable)" value={tool.category} />
+              <MetaField label="Primary Category" value={tool.primary_category} />
+              <MetaField label="Group" value={tool.group_name} />
+              <MetaField label="Seed Upvotes" value={tool.seed_upvotes} />
+              <MetaField label="Featured" value={tool.featured ? 'Yes' : 'No'} />
+              <MetaField label="Research Version" value={tool.research_version ? `v${tool.research_version}` : '-'} />
+              <MetaField label="Featured in Issue" value={tool.featured_in_issue_id ? tool.featured_in_issue_id.slice(0, 8) + '...' : '-'} />
+              <MetaField label="Created" value={tool.created_at ? new Date(tool.created_at).toLocaleDateString() : '-'} />
+              <MetaField label="Updated" value={tool.updated_at ? timeAgo(tool.updated_at) : '-'} />
+              <MetaField label="Research Completed" value={tool.research_completed_at ? new Date(tool.research_completed_at).toLocaleDateString() : '-'} />
+              <MetaField label="Analysis Completed" value={tool.analysis_completed_at ? new Date(tool.analysis_completed_at).toLocaleDateString() : '-'} />
+            </div>
+          </div>
         </div>
       )}
 
@@ -788,8 +809,9 @@ export default function ToolDetail() {
                 <CollapsibleJsonViewer title="Raw Research (debug)" data={tool.raw_research} />
               )}
 
-              {/* Legacy review data */}
+              {/* Legacy data */}
               {tool.review_data && <JsonViewer title="Legacy Review Data" data={tool.review_data} />}
+              {tool.linkedin_data && <JsonViewer title="Legacy LinkedIn Data" data={tool.linkedin_data} />}
             </div>
           ) : (
             <EmptyState message="No research data available." detail="Trigger research to populate this tab." />
@@ -952,6 +974,17 @@ function ChipToggle({ label, active, onClick }) {
     }}>
       {label}
     </button>
+  );
+}
+
+function MetaField({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: colors.dim, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13, color: value && value !== '-' && value !== 'No' ? colors.text : colors.subtle, fontFamily: "'IBM Plex Mono', monospace" }}>
+        {value ?? '-'}
+      </div>
+    </div>
   );
 }
 

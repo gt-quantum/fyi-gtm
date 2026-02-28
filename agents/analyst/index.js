@@ -101,7 +101,7 @@ module.exports = {
 
     let query = supabase
       .from('tools')
-      .select('id, name, slug, url, raw_research, research_version')
+      .select('id, name, slug, url, raw_research, research_version, research_gaps')
       .eq('analysis_status', 'queued')
       .order('updated_at', { ascending: true })
       .limit(1);
@@ -109,7 +109,7 @@ module.exports = {
     if (toolId) {
       query = supabase
         .from('tools')
-        .select('id, name, slug, url, raw_research, research_version')
+        .select('id, name, slug, url, raw_research, research_version, research_gaps')
         .eq('id', toolId);
     }
 
@@ -299,9 +299,9 @@ async function analyzeTool(tool, executionId, config) {
     ai_automation: allExtracted.ai_automation,
     integrations: allExtracted.integrations,
 
-    // Confidence & gaps
+    // Confidence & gaps (merge with research agent's existing gaps)
     confidence_scores,
-    research_gaps,
+    research_gaps: mergeGaps(tool.research_gaps, research_gaps),
 
     // Status — uses needs_review if confidence is too low
     research_status: 'complete',
@@ -333,4 +333,17 @@ async function analyzeTool(tool, executionId, config) {
     gaps: research_gaps.length,
     warnings
   };
+}
+
+/**
+ * Merge research agent gaps with analyst gaps, deduplicating.
+ */
+function mergeGaps(researchGaps, analystGaps) {
+  const existing = Array.isArray(researchGaps) ? researchGaps : [];
+  const incoming = Array.isArray(analystGaps) ? analystGaps : [];
+  const merged = [...existing];
+  for (const gap of incoming) {
+    if (!merged.includes(gap)) merged.push(gap);
+  }
+  return merged;
 }
