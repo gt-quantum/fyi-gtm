@@ -427,6 +427,9 @@ export default function ToolDetail() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>{tool.name}</h1>
         <StatusBadge status={tool.research_status} />
+        {tool.analysis_status && tool.analysis_status !== 'pending' && (
+          <StatusBadge status={tool.analysis_status} />
+        )}
         {tool.url && (
           <a href={tool.url} target="_blank" rel="noopener" style={{ color: colors.accent, fontSize: 12 }}>
             {(() => { try { return new URL(tool.url).hostname; } catch { return tool.url; } })()} &#8599;
@@ -434,7 +437,10 @@ export default function ToolDetail() {
         )}
       </div>
       {tool.summary && (
-        <p style={{ color: colors.muted, fontSize: 13, marginBottom: 8, lineHeight: 1.5 }}>{tool.summary}</p>
+        <p style={{ color: colors.muted, fontSize: 13, marginBottom: 4, lineHeight: 1.5 }}>{tool.summary}</p>
+      )}
+      {tool.best_for && (
+        <p style={{ color: colors.dim, fontSize: 12, marginBottom: 8, lineHeight: 1.4, fontStyle: 'italic' }}>{tool.best_for}</p>
       )}
 
       {/* Action bar */}
@@ -652,11 +658,138 @@ export default function ToolDetail() {
       {/* ===== RESEARCH DATA TAB ===== */}
       {activeTab === 'research' && (
         <div>
-          {tool.website_data || tool.research_blob ? (
+          {tool.raw_research || tool.website_data || tool.research_blob ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Confidence Scoreboard */}
+              {tool.confidence_scores && (
+                <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Confidence Scores</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+                    {Object.entries(tool.confidence_scores).map(([key, val]) => {
+                      const pct = Math.round(val * 100);
+                      const color = pct >= 70 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+                      return (
+                        <div key={key} style={{ padding: '8px 12px', borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg }}>
+                          <div style={{ fontSize: 11, color: colors.dim, marginBottom: 2 }}>{key.replace(/_/g, ' ')}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color }}>{pct}%</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Analysis Status + Best For */}
+              {(tool.analysis_status || tool.best_for) && (
+                <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, padding: 20 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Analysis Summary</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: colors.dim, marginBottom: 4 }}>Analysis Status</div>
+                      <StatusBadge status={tool.analysis_status || 'pending'} />
+                    </div>
+                    {tool.best_for && (
+                      <div>
+                        <div style={{ fontSize: 11, color: colors.dim, marginBottom: 4 }}>Best For</div>
+                        <div style={{ fontSize: 13, color: colors.muted, lineHeight: 1.5 }}>{tool.best_for}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Research Gaps */}
+              {tool.research_gaps && tool.research_gaps.length > 0 && (
+                <div style={{
+                  padding: '12px 16px', borderRadius: 8,
+                  background: '#422006', border: '1px solid #78350f',
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', marginBottom: 8 }}>
+                    Research Gaps ({tool.research_gaps.length})
+                  </div>
+                  {tool.research_gaps.map((gap, i) => (
+                    <div key={i} style={{ fontSize: 12, color: '#fcd34d', marginBottom: 4, paddingLeft: 8, borderLeft: '2px solid #78350f' }}>
+                      {gap}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Key Features */}
+              {tool.key_features && tool.key_features.length > 0 && (
+                <JsonViewer title={`Key Features (${tool.key_features.length})`} data={tool.key_features} />
+              )}
+
+              {/* Use Cases */}
+              {tool.use_cases && tool.use_cases.length > 0 && (
+                <JsonViewer title={`Use Cases (${tool.use_cases.length})`} data={tool.use_cases} />
+              )}
+
+              {/* Pricing Info */}
+              {tool.pricing_info && Object.keys(tool.pricing_info).length > 0 && (
+                <JsonViewer title="Pricing Info" data={tool.pricing_info} />
+              )}
+
+              {/* Ratings */}
+              {tool.ratings && Object.keys(tool.ratings).length > 0 && (
+                <div>
+                  {tool.ratings._nulled_reason && (
+                    <div style={{
+                      padding: '8px 12px', borderRadius: '8px 8px 0 0',
+                      background: '#450a0a', border: '1px solid #7f1d1d', borderBottom: 'none',
+                      fontSize: 11, color: '#f87171'
+                    }}>
+                      Ratings nulled: {tool.ratings._nulled_reason}
+                    </div>
+                  )}
+                  <JsonViewer title="Ratings" data={tool.ratings} />
+                </div>
+              )}
+
+              {/* Pros & Cons */}
+              {tool.pros_cons && (tool.pros_cons.pros?.length > 0 || tool.pros_cons.cons?.length > 0) && (
+                <JsonViewer title={`Pros & Cons (${(tool.pros_cons.pros?.length || 0)} pros, ${(tool.pros_cons.cons?.length || 0)} cons)`} data={tool.pros_cons} />
+              )}
+
+              {/* User Sentiment */}
+              {tool.user_sentiment && Object.keys(tool.user_sentiment).length > 0 && (
+                <JsonViewer title="User Sentiment" data={tool.user_sentiment} />
+              )}
+
+              {/* Competitors */}
+              {tool.competitors && tool.competitors.length > 0 && (
+                <JsonViewer title={`Competitors (${tool.competitors.length})`} data={tool.competitors} />
+              )}
+
+              {/* Company Info */}
+              {tool.company_info && Object.keys(tool.company_info).length > 0 && (
+                <JsonViewer title="Company Info" data={tool.company_info} />
+              )}
+
+              {/* Recent Developments */}
+              {tool.recent_developments && tool.recent_developments.length > 0 && (
+                <JsonViewer title={`Recent Developments (${tool.recent_developments.length})`} data={tool.recent_developments} />
+              )}
+
+              {/* Website Data */}
               {tool.website_data && <JsonViewer title="Scraped Website Data" data={tool.website_data} />}
+
+              {/* AI Research Summary (general Perplexity blob) */}
               {tool.research_blob && <TextViewer title="AI Research Summary" text={tool.research_blob} />}
-              {tool.review_data && <JsonViewer title="Review Data & Citations" data={tool.review_data} />}
+
+              {/* Research Sources */}
+              {tool.research_sources && tool.research_sources.length > 0 && (
+                <CollapsibleJsonViewer title={`Research Sources (${tool.research_sources.length})`} data={tool.research_sources} />
+              )}
+
+              {/* Raw Research (collapsible) */}
+              {tool.raw_research && (
+                <CollapsibleJsonViewer title="Raw Research (debug)" data={tool.raw_research} />
+              )}
+
+              {/* Legacy review data */}
+              {tool.review_data && <JsonViewer title="Legacy Review Data" data={tool.review_data} />}
             </div>
           ) : (
             <EmptyState message="No research data available." detail="Trigger research to populate this tab." />
@@ -819,6 +952,31 @@ function ChipToggle({ label, active, onClick }) {
     }}>
       {label}
     </button>
+  );
+}
+
+function CollapsibleJsonViewer({ title, data }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+      <button onClick={() => setOpen(!open)} style={{
+        width: '100%', padding: '10px 16px', borderBottom: open ? `1px solid ${colors.border}` : 'none',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+      }}>
+        <h3 style={{ fontSize: 13, fontWeight: 600, color: colors.text }}>{title}</h3>
+        <span style={{ fontSize: 12, color: colors.dim }}>{open ? 'Collapse' : 'Expand'}</span>
+      </button>
+      {open && (
+        <pre style={{
+          padding: 16, margin: 0, overflow: 'auto', maxHeight: 600,
+          fontSize: 12, lineHeight: 1.5, color: colors.muted,
+          fontFamily: "'IBM Plex Mono', monospace",
+        }}>
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      )}
+    </div>
   );
 }
 

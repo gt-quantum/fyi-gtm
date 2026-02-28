@@ -5,25 +5,35 @@
 
 const EXTRACTION_SYSTEM = 'You are a data extraction engine. Extract structured data from research text. Output ONLY valid JSON — no markdown, no explanation.';
 
-const CLASSIFICATION_SYSTEM = `You are a GTM tool classification engine. Classify tools into the taxonomy below. Output ONLY valid JSON.
+const CLASSIFICATION_SYSTEM = `You are a GTM tool classification engine. Classify tools into the EXACT taxonomy below. Output ONLY valid JSON. Use ONLY the slugs listed — no others.
 
-**primary_category** (pick ONE):
-intent-signals, ai-sales-assistants, lead-management, sales-engagement, crm-platforms, email-marketing, abm-platforms, data-enrichment, conversation-intelligence, content-creation, sales-enablement, analytics-reporting, meeting-scheduling, proposal-cpq, customer-success, marketing-automation, advertising, social-selling, competitive-intelligence, revenue-operations
+**primary_category** (pick ONE from these 27):
+contact-company-data, data-enrichment-hygiene, intent-signals, market-competitive-research, ai-data-agents,
+marketing-automation-email, abm-demand-gen, content-creative, social-community, seo-organic, ai-marketing-tools,
+crm, sales-engagement, sales-enablement, cpq-proposals, ai-sales-assistants,
+lead-management, pipeline-forecasting, revenue-analytics-attribution, workflow-integration, ai-revops-tools,
+customer-success, product-analytics-adoption, support-feedback, ai-customer-tools,
+partner-management, affiliates-referrals, ai-partnership-tools
 
-**group_name** (pick ONE):
-data-intelligence, sales-automation, marketing-platforms, revenue-tools, content-tools, operations
+**group_name** (pick ONE — must match the primary_category's group):
+data-intelligence → contact-company-data, data-enrichment-hygiene, intent-signals, market-competitive-research, ai-data-agents
+marketing → marketing-automation-email, abm-demand-gen, content-creative, social-community, seo-organic, ai-marketing-tools
+sales → crm, sales-engagement, sales-enablement, cpq-proposals, ai-sales-assistants
+revenue-operations → lead-management, pipeline-forecasting, revenue-analytics-attribution, workflow-integration, ai-revops-tools
+customer → customer-success, product-analytics-adoption, support-feedback, ai-customer-tools
+partnerships → partner-management, affiliates-referrals, ai-partnership-tools
 
 **pricing** (pick ONE):
-free, freemium, starter, mid-market, enterprise, custom, usage-based
+free | freemium | paid | enterprise
 
 **company_size** (pick 1-3):
-startup, smb, mid-market, enterprise
+smb | mid-market | enterprise
 
 **ai_automation** (pick 1-2):
-ai-native, ai-enhanced, automation-focused, traditional
+ai-native | ai-enhanced | automation
 
 **pricing_tags** (pick 1-2):
-free-tier, affordable, mid-range, enterprise-pricing, usage-based, custom-pricing`;
+free-tier | freemium | paid-only | enterprise-pricing`;
 
 /**
  * Features + use cases + recent developments extraction prompt.
@@ -69,11 +79,14 @@ Extract 5-10 key features, 3-6 use cases, and any recent developments from the l
 function buildSentimentPrompt(toolName, rawResearch) {
   const reviews = rawResearch.perplexity_reviews?.response || '';
   const general = rawResearch.perplexity_general?.response || '';
+  const community = rawResearch.perplexity_community?.response || '';
 
   return `Extract user sentiment, pros/cons, and ratings for "${toolName}".
 
 REVIEW RESEARCH:
 ${reviews}
+
+${community ? `COMMUNITY PRESENCE (ProductHunt/HN/Reddit):\n${community.slice(0, 2000)}` : ''}
 
 GENERAL RESEARCH (for additional context):
 ${general.slice(0, 2000)}
@@ -109,7 +122,9 @@ Output JSON:
   }
 }
 
-Extract 3-5 pros, 3-5 cons, 3-5 themes each, and 3-5 notable quotes. Use null for unknown ratings.`;
+Extract 3-5 pros, 3-5 cons, 3-5 themes each, and 3-5 notable quotes. Use null for unknown ratings.
+
+CRITICAL: If no reviews exist on G2, Capterra, or TrustRadius for this specific product, set ALL rating scores to null and review counts to null. Only include ratings you can verify from the research data. Do NOT fabricate review scores.`;
 }
 
 /**
@@ -188,13 +203,19 @@ List 3-8 competitors. Direct = same problem/audience, indirect = broader platfor
 function buildCompanyInfoPrompt(toolName, rawResearch) {
   const general = rawResearch.perplexity_general?.response || '';
   const aboutPage = rawResearch.scrape?.about_page || {};
+  const companyData = rawResearch.perplexity_company?.response || '';
+  const jsonLd = rawResearch.scrape?.json_ld || [];
 
   return `Extract company information for the company behind "${toolName}".
 
 GENERAL RESEARCH:
 ${general}
 
+${companyData ? `COMPANY SOURCES (LinkedIn/Crunchbase/YC):\n${companyData.slice(0, 3000)}` : ''}
+
 ${aboutPage.found ? `ABOUT PAGE:\n${aboutPage.raw_text?.slice(0, 1500) || ''}\n${aboutPage.team_info ? `Team mentions: ${aboutPage.team_info}` : ''}${aboutPage.founded_year ? `\nFounded: ${aboutPage.founded_year}` : ''}` : ''}
+
+${jsonLd.length ? `STRUCTURED DATA (JSON-LD):\n${JSON.stringify(jsonLd.slice(0, 3), null, 2).slice(0, 1000)}` : ''}
 
 Output JSON:
 {
@@ -283,11 +304,26 @@ function buildResearchContext(rawResearch) {
   if (rawResearch.scrape?.homepage?.description) {
     sections.push(`HOMEPAGE: ${rawResearch.scrape.homepage.description}`);
   }
+  if (rawResearch.scrape?.json_ld?.length) {
+    sections.push(`STRUCTURED DATA (JSON-LD):\n${JSON.stringify(rawResearch.scrape.json_ld.slice(0, 3), null, 2).slice(0, 1500)}`);
+  }
   if (rawResearch.scrape?.features_page?.found) {
     sections.push(`FEATURES PAGE: ${rawResearch.scrape.features_page.raw_text?.slice(0, 1500) || ''}`);
   }
+  if (rawResearch.scrape?.changelog_page?.found) {
+    sections.push(`CHANGELOG: ${rawResearch.scrape.changelog_page.raw_text?.slice(0, 1000) || ''}`);
+  }
+  if (rawResearch.scrape?.blog_page?.found) {
+    sections.push(`BLOG: ${rawResearch.scrape.blog_page.raw_text?.slice(0, 1000) || ''}`);
+  }
   if (rawResearch.perplexity_general?.response) {
     sections.push(`GENERAL RESEARCH:\n${rawResearch.perplexity_general.response}`);
+  }
+  if (rawResearch.perplexity_company?.response) {
+    sections.push(`COMPANY SOURCES (LinkedIn/Crunchbase/YC):\n${rawResearch.perplexity_company.response.slice(0, 2000)}`);
+  }
+  if (rawResearch.perplexity_community?.response) {
+    sections.push(`COMMUNITY PRESENCE (ProductHunt/HN/Reddit):\n${rawResearch.perplexity_community.response.slice(0, 2000)}`);
   }
 
   return sections.join('\n\n');

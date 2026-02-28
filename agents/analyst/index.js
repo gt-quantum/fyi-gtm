@@ -12,7 +12,7 @@ const { logStep } = require('../../shared/database/queries');
 const { getConfig } = require('../../shared/clients/config');
 const { extractFeatures, extractSentiment, extractPricing, extractCompetitors, extractCompanyInfo } = require('./extractors');
 const { classify, generateSummary } = require('./classifier');
-const { computeConfidence, validateExtracted } = require('./validator');
+const { computeConfidence, validateExtracted, detectHallucinations, applyHallucinationFixes } = require('./validator');
 
 module.exports = {
   name: 'Analyst Agent',
@@ -233,10 +233,10 @@ async function analyzeTool(tool, executionId, config) {
     model: config.summaryModel
   });
 
-  // Step 9: Validate & score (code only)
+  // Step 9: Validate, detect hallucinations & score (code only)
   await logStep(executionId, 'validate', 'started');
 
-  const allExtracted = {
+  let allExtracted = {
     ...featuresData,
     ...sentimentData,
     ...pricingData,
@@ -246,11 +246,25 @@ async function analyzeTool(tool, executionId, config) {
     ...summaryData
   };
 
-  const { confidence_scores, research_gaps } = computeConfidence(rawResearch, allExtracted);
+  // Hallucination detection
+  const { flags: hallucinationFlags, hasCritical } = detectHallucinations(rawResearch, allExtracted);
+  if (hasCritical) {
+    console.warn(`[analyst] CRITICAL hallucination flags for ${tool.name}: ${hallucinationFlags.filter(f => f.severity === 'critical').map(f => f.type).join(', ')}`);
+    allExtracted = applyHallucinationFixes(allExtracted, hallucinationFlags);
+  }
+
+  // Source-weighted confidence scoring (with hallucination flags)
+  const { confidence_scores, research_gaps } = computeConfidence(rawResearch, allExtracted, hallucinationFlags);
   const warnings = validateExtracted(allExtracted);
+
+  // Determine analysis status based on confidence
+  const analysisStatus = confidence_scores.overall < 0.3 ? 'needs_review' : 'complete';
 
   await logStep(executionId, 'validate', 'completed', {
     overall_confidence: confidence_scores.overall,
+    analysis_status: analysisStatus,
+    hallucination_flags: hallucinationFlags.length,
+    critical_flags: hasCritical,
     gaps: research_gaps.length,
     warnings: warnings.length
   });
@@ -260,37 +274,38 @@ async function analyzeTool(tool, executionId, config) {
 
   const updatePayload = {
     // Extracted structured data
-    key_features: featuresData.key_features,
-    use_cases: featuresData.use_cases,
-    recent_developments: featuresData.recent_developments,
-    pros_cons: sentimentData.pros_cons,
-    user_sentiment: sentimentData.user_sentiment,
-    ratings: sentimentData.ratings,
-    pricing_info: pricingData.pricing_info,
-    competitors: competitorData.competitors,
-    company_info: companyData.company_info,
+    key_features: allExtracted.key_features,
+    use_cases: allExtracted.use_cases,
+    recent_developments: allExtracted.recent_developments,
+    pros_cons: allExtracted.pros_cons,
+    user_sentiment: allExtracted.user_sentiment,
+    ratings: allExtracted.ratings,
+    pricing_info: allExtracted.pricing_info,
+    competitors: allExtracted.competitors,
+    company_info: allExtracted.company_info,
 
     // Classification
-    summary: summaryData.summary,
-    category: classification.category,
-    primary_category: classification.primary_category,
-    categories: classification.categories,
-    group_name: classification.group_name,
-    tags: classification.tags,
-    pricing: classification.pricing,
-    price_note: classification.price_note,
-    pricing_tags: classification.pricing_tags,
-    company_size: classification.company_size,
-    ai_automation: classification.ai_automation,
-    integrations: classification.integrations,
+    summary: allExtracted.summary,
+    best_for: allExtracted.best_for || null,
+    category: allExtracted.category,
+    primary_category: allExtracted.primary_category,
+    categories: allExtracted.categories,
+    group_name: allExtracted.group_name,
+    tags: allExtracted.tags,
+    pricing: allExtracted.pricing,
+    price_note: allExtracted.price_note,
+    pricing_tags: allExtracted.pricing_tags,
+    company_size: allExtracted.company_size,
+    ai_automation: allExtracted.ai_automation,
+    integrations: allExtracted.integrations,
 
     // Confidence & gaps
     confidence_scores,
     research_gaps,
 
-    // Status
+    // Status — uses needs_review if confidence is too low
     research_status: 'complete',
-    analysis_status: 'complete',
+    analysis_status: analysisStatus,
     analysis_completed_at: new Date().toISOString(),
     research_completed_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -308,11 +323,13 @@ async function analyzeTool(tool, executionId, config) {
     overall_confidence: confidence_scores.overall
   });
 
-  console.log(`[analyst] Completed: ${tool.name} → ${classification.primary_category} (confidence: ${confidence_scores.overall})`);
+  console.log(`[analyst] Completed: ${tool.name} → ${allExtracted.primary_category} (confidence: ${confidence_scores.overall}, status: ${analysisStatus})`);
 
   return {
-    primary_category: classification.primary_category,
+    primary_category: allExtracted.primary_category,
     confidence: confidence_scores.overall,
+    analysis_status: analysisStatus,
+    hallucination_flags: hallucinationFlags.length,
     gaps: research_gaps.length,
     warnings
   };

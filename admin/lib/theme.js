@@ -24,6 +24,7 @@ export const statusColors = {
   analyzing: { bg: '#2e1065', text: '#c084fc' },
   complete: { bg: '#052e16', text: '#4ade80' },
   failed: { bg: '#450a0a', text: '#f87171' },
+  needs_review: { bg: '#431407', text: '#fb923c' },
   success: { bg: '#052e16', text: '#4ade80' },
   running: { bg: '#172554', text: '#60a5fa' },
   published: { bg: '#052e16', text: '#4ade80' },

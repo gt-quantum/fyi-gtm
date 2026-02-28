@@ -1,11 +1,12 @@
 /**
  * Research Agent — Comprehensive Data Gathering
  *
- * Pipeline: Fetch queue → Multi-page scrape → 4 Perplexity searches
- * (general/pricing/reviews/competitors) → Haiku consolidation → Store + trigger Analyst.
+ * Pipeline: Fetch queue → Multi-page scrape (sitemap, JSON-LD, AI discovery)
+ * → 6 Perplexity searches (general → parallel: pricing/reviews/competitors/company/community)
+ * → Haiku consolidation → Quality gate → Store + trigger Analyst.
  *
  * Writes raw_research JSONB, research_sources, sets research_status='researched'.
- * Chains to Analyst Agent for structuring.
+ * Chains to Analyst Agent for structuring (if quality gate passes).
  */
 const { supabase } = require('../../shared/clients/supabase');
 const { logStep, createExecution, completeExecution } = require('../../shared/database/queries');
@@ -18,7 +19,7 @@ const prompts = require('./prompts');
 
 module.exports = {
   name: 'Research Agent',
-  description: 'Comprehensive data gathering: scrapes websites, runs targeted web searches, consolidates findings into raw_research JSONB',
+  description: 'Comprehensive data gathering: scrapes websites (sitemap, JSON-LD, AI page discovery), runs 6 targeted web searches, consolidates findings with quality gate',
   type: 'agent',
   schedule: 'manual',
   enabled: true,
@@ -31,6 +32,8 @@ module.exports = {
     perplexity_pricing: 'Targeted pricing lookup — exact dollar amounts, tier names, free trial, contract terms',
     perplexity_reviews: 'User sentiment — G2/Capterra/Reddit ratings, specific praise/complaints, user quotes',
     perplexity_competitors: 'Competitive landscape — named alternatives, market segment, differentiators',
+    perplexity_company: 'Company sources — LinkedIn, Crunchbase, YC, AngelList profiles',
+    perplexity_community: 'Community presence — Product Hunt, HN, Reddit, press coverage',
     consolidation: 'Cross-reference all sources, identify contradictions, flag gaps, assess completeness',
   },
 
@@ -39,9 +42,11 @@ module.exports = {
     perplexity_targeted_model: 'sonar (configurable: research_perplexity_targeted_model)',
     consolidation_model: 'claude-haiku-4-5 (configurable: research_consolidation_model)',
     consolidation_provider: 'anthropic (configurable: research_consolidation_provider)',
+    ai_discovery_model: 'claude-haiku-4-5 (configurable: research_consolidation_model)',
     search_recency_filter: 'month',
-    max_pages_scraped: '5 (homepage + pricing/features/about/integrations)',
+    max_pages_scraped: '8 (homepage + pricing/features/about/integrations/changelog/blog)',
     scrape_timeout: '20s per page',
+    queries: '6 (general sonar-pro + 5x sonar parallel)',
   },
 
   flow: {
@@ -50,20 +55,18 @@ module.exports = {
       { id: 'fetch_queue', label: 'Fetch Queued Tools', type: 'action', icon: 'database' },
       { id: 'scrape', label: 'Multi-Page Scrape', type: 'action', icon: 'globe' },
       { id: 'perplexity_general', label: 'Perplexity: General', type: 'ai', icon: 'sparkle' },
-      { id: 'perplexity_pricing', label: 'Perplexity: Pricing', type: 'ai', icon: 'sparkle' },
-      { id: 'perplexity_reviews', label: 'Perplexity: Reviews', type: 'ai', icon: 'sparkle' },
-      { id: 'perplexity_competitors', label: 'Perplexity: Competitors', type: 'ai', icon: 'sparkle' },
+      { id: 'perplexity_targeted', label: 'Perplexity: 5x Parallel', type: 'ai', icon: 'sparkle' },
       { id: 'consolidation', label: 'Consolidation', type: 'ai', icon: 'sparkle' },
+      { id: 'quality_gate', label: 'Quality Gate', type: 'action', icon: 'check' },
       { id: 'store', label: 'Store + Trigger Analyst', type: 'output', icon: 'check' },
     ],
     edges: [
       { from: 'fetch_queue', to: 'scrape' },
       { from: 'scrape', to: 'perplexity_general' },
-      { from: 'perplexity_general', to: 'perplexity_pricing' },
-      { from: 'perplexity_pricing', to: 'perplexity_reviews' },
-      { from: 'perplexity_reviews', to: 'perplexity_competitors' },
-      { from: 'perplexity_competitors', to: 'consolidation' },
-      { from: 'consolidation', to: 'store' },
+      { from: 'perplexity_general', to: 'perplexity_targeted' },
+      { from: 'perplexity_targeted', to: 'consolidation' },
+      { from: 'consolidation', to: 'quality_gate' },
+      { from: 'quality_gate', to: 'store' },
       { from: 'store', to: 'scrape', label: 'next tool' },
     ],
   },
@@ -149,31 +152,48 @@ async function researchTool(tool, executionId, config, context) {
     .update({ research_status: 'researching', updated_at: new Date().toISOString() })
     .eq('id', tool.id);
 
-  // Step 2: Multi-page scrape
+  // Step 2: Multi-page scrape (with AI page discovery)
   await logStep(executionId, `scrape_${tool.slug}`, 'started');
   let scrapeData;
   try {
-    scrapeData = await scrapeWebsite(tool.url);
+    scrapeData = await scrapeWebsite(tool.url, {
+      aiRouter: ask,
+      aiModel: config.consolidationModel, // Use Haiku for AI page discovery
+    });
     sourceTracker.add(tool.url, 'scrape', { section: 'homepage' });
+    // Track scraped subpages
+    for (const [pageType, pageData] of Object.entries(scrapeData)) {
+      if (pageData && pageData.found) {
+        sourceTracker.add(tool.url, 'scrape', { section: pageType });
+      }
+    }
   } catch (err) {
     console.warn(`[research] Scrape failed for ${tool.slug}: ${err.message}`);
     scrapeData = {
-      homepage: { title: '', description: '', h1s: [], meta: {}, error: err.message },
+      homepage: { title: '', description: '', h1s: [], meta: {}, error: err.message, error_type: 'exception' },
+      json_ld: [],
+      sitemap_urls: [],
       pricing_page: { found: false },
       features_page: { found: false },
       about_page: { found: false },
-      integrations_page: { found: false }
+      integrations_page: { found: false },
+      changelog_page: { found: false },
+      blog_page: { found: false },
     };
   }
   await logStep(executionId, `scrape_${tool.slug}`, 'completed', {
     homepage: !!scrapeData.homepage?.title,
+    json_ld: scrapeData.json_ld?.length || 0,
+    sitemap_urls: scrapeData.sitemap_urls?.length || 0,
     pricing: scrapeData.pricing_page?.found || false,
     features: scrapeData.features_page?.found || false,
     about: scrapeData.about_page?.found || false,
     integrations: scrapeData.integrations_page?.found || false,
+    changelog: scrapeData.changelog_page?.found || false,
+    blog: scrapeData.blog_page?.found || false,
   });
 
-  // Step 3: Perplexity General (sonar-pro)
+  // Step 3: Perplexity General (sonar-pro) — runs first to provide context
   await logStep(executionId, `perplexity_general_${tool.slug}`, 'started');
   const generalQuery = prompts.buildGeneralPrompt(tool, scrapeData);
   const generalRes = await perplexity.ask({
@@ -184,66 +204,97 @@ async function researchTool(tool, executionId, config, context) {
   });
   const generalText = perplexity.getText(generalRes);
   const generalCitations = perplexity.getCitations(generalRes);
+  const generalInsufficient = generalText.toUpperCase().includes('INSUFFICIENT_DATA');
   sourceTracker.addCitations(generalCitations, 'general');
   await logStep(executionId, `perplexity_general_${tool.slug}`, 'completed', {
-    chars: generalText.length, citations: generalCitations.length, model: config.mainModel
+    chars: generalText.length, citations: generalCitations.length,
+    model: config.mainModel, insufficient: generalInsufficient
   });
 
-  // Step 4: Perplexity Pricing (sonar)
-  await logStep(executionId, `perplexity_pricing_${tool.slug}`, 'started');
-  const pricingQuery = prompts.buildPricingPrompt(tool, scrapeData);
-  const pricingRes = await perplexity.ask({
-    model: config.targetedModel,
-    system: prompts.PERPLEXITY_SYSTEM,
-    messages: [{ role: 'user', content: pricingQuery }],
-    search_recency_filter: 'month'
-  });
+  // Cross-prompt context: truncated general response for targeted queries
+  const generalContext = generalText.slice(0, 1500);
+
+  // Step 4: 5x Parallel targeted queries (sonar)
+  await logStep(executionId, `perplexity_targeted_${tool.slug}`, 'started');
+
+  const pricingQuery = prompts.buildPricingPrompt(tool, scrapeData, generalContext);
+  const reviewsQuery = prompts.buildReviewsPrompt(tool, scrapeData, generalContext);
+  const competitorsQuery = prompts.buildCompetitorsPrompt(tool, scrapeData, generalContext);
+  const companyQuery = prompts.buildCompanySourcesPrompt(tool, scrapeData, generalContext);
+  const communityQuery = prompts.buildCommunityPresencePrompt(tool, scrapeData, generalContext);
+
+  const targetedParams = { system: prompts.PERPLEXITY_SYSTEM, search_recency_filter: 'month' };
+
+  const [pricingRes, reviewsRes, competitorsRes, companyRes, communityRes] = await Promise.all([
+    perplexity.ask({ ...targetedParams, model: config.targetedModel, messages: [{ role: 'user', content: pricingQuery }] }),
+    perplexity.ask({ ...targetedParams, model: config.targetedModel, messages: [{ role: 'user', content: reviewsQuery }] }),
+    perplexity.ask({ ...targetedParams, model: config.targetedModel, messages: [{ role: 'user', content: competitorsQuery }] }),
+    perplexity.ask({ ...targetedParams, model: config.targetedModel, messages: [{ role: 'user', content: companyQuery }] }),
+    perplexity.ask({ ...targetedParams, model: config.targetedModel, messages: [{ role: 'user', content: communityQuery }] }),
+  ]);
+
   const pricingText = perplexity.getText(pricingRes);
   const pricingCitations = perplexity.getCitations(pricingRes);
+  const pricingInsufficient = pricingText.toUpperCase().includes('INSUFFICIENT_DATA');
   sourceTracker.addCitations(pricingCitations, 'pricing');
-  await logStep(executionId, `perplexity_pricing_${tool.slug}`, 'completed', {
-    chars: pricingText.length, citations: pricingCitations.length, model: config.targetedModel
-  });
 
-  // Step 5: Perplexity Reviews (sonar)
-  await logStep(executionId, `perplexity_reviews_${tool.slug}`, 'started');
-  const reviewsQuery = prompts.buildReviewsPrompt(tool);
-  const reviewsRes = await perplexity.ask({
-    model: config.targetedModel,
-    system: prompts.PERPLEXITY_SYSTEM,
-    messages: [{ role: 'user', content: reviewsQuery }],
-    search_recency_filter: 'month'
-  });
   const reviewsText = perplexity.getText(reviewsRes);
   const reviewsCitations = perplexity.getCitations(reviewsRes);
+  const reviewsInsufficient = reviewsText.toUpperCase().includes('INSUFFICIENT_DATA');
   sourceTracker.addCitations(reviewsCitations, 'reviews');
-  await logStep(executionId, `perplexity_reviews_${tool.slug}`, 'completed', {
-    chars: reviewsText.length, citations: reviewsCitations.length, model: config.targetedModel
-  });
 
-  // Step 6: Perplexity Competitors (sonar)
-  await logStep(executionId, `perplexity_competitors_${tool.slug}`, 'started');
-  const competitorsQuery = prompts.buildCompetitorsPrompt(tool, scrapeData);
-  const competitorsRes = await perplexity.ask({
-    model: config.targetedModel,
-    system: prompts.PERPLEXITY_SYSTEM,
-    messages: [{ role: 'user', content: competitorsQuery }],
-    search_recency_filter: 'month'
-  });
   const competitorsText = perplexity.getText(competitorsRes);
   const competitorsCitations = perplexity.getCitations(competitorsRes);
+  const competitorsInsufficient = competitorsText.toUpperCase().includes('INSUFFICIENT_DATA');
   sourceTracker.addCitations(competitorsCitations, 'competitors');
-  await logStep(executionId, `perplexity_competitors_${tool.slug}`, 'completed', {
-    chars: competitorsText.length, citations: competitorsCitations.length, model: config.targetedModel
+
+  const companyText = perplexity.getText(companyRes);
+  const companyCitations = perplexity.getCitations(companyRes);
+  const companyInsufficient = companyText.toUpperCase().includes('INSUFFICIENT_DATA');
+  sourceTracker.addCitations(companyCitations, 'company');
+
+  const communityText = perplexity.getText(communityRes);
+  const communityCitations = perplexity.getCitations(communityRes);
+  const communityInsufficient = communityText.toUpperCase().includes('INSUFFICIENT_DATA');
+  sourceTracker.addCitations(communityCitations, 'community');
+
+  // Citation relevance filtering
+  const toolDomain = (() => { try { return new URL(tool.url).hostname.replace('www.', ''); } catch { return ''; } })();
+  const relevantDomains = [toolDomain, 'g2.com', 'capterra.com', 'trustradius.com', 'crunchbase.com',
+    'linkedin.com', 'producthunt.com', 'reddit.com', 'news.ycombinator.com', 'techcrunch.com',
+    'venturebeat.com', 'wellfound.com', 'ycombinator.com'];
+
+  function computeCitationRelevance(citations) {
+    if (!citations || citations.length === 0) return 1;
+    const relevant = citations.filter(c => {
+      try {
+        const host = new URL(c).hostname.replace('www.', '');
+        return relevantDomains.some(d => host.includes(d));
+      } catch { return false; }
+    });
+    return relevant.length / citations.length;
+  }
+
+  const reviewsCitationRelevance = computeCitationRelevance(reviewsCitations);
+
+  await logStep(executionId, `perplexity_targeted_${tool.slug}`, 'completed', {
+    pricing: { chars: pricingText.length, citations: pricingCitations.length, insufficient: pricingInsufficient },
+    reviews: { chars: reviewsText.length, citations: reviewsCitations.length, insufficient: reviewsInsufficient, citationRelevance: reviewsCitationRelevance },
+    competitors: { chars: competitorsText.length, citations: competitorsCitations.length, insufficient: competitorsInsufficient },
+    company: { chars: companyText.length, citations: companyCitations.length, insufficient: companyInsufficient },
+    community: { chars: communityText.length, citations: communityCitations.length, insufficient: communityInsufficient },
+    model: config.targetedModel
   });
 
-  // Step 7: Consolidation (Haiku)
+  // Step 5: Consolidation (Haiku)
   await logStep(executionId, `consolidation_${tool.slug}`, 'started');
   const perplexityResults = {
-    general: { query: generalQuery, response: generalText, citations: generalCitations, model: config.mainModel },
-    pricing: { query: pricingQuery, response: pricingText, citations: pricingCitations, model: config.targetedModel },
-    reviews: { query: reviewsQuery, response: reviewsText, citations: reviewsCitations, model: config.targetedModel },
-    competitors: { query: competitorsQuery, response: competitorsText, citations: competitorsCitations, model: config.targetedModel }
+    general: { query: generalQuery, response: generalText, citations: generalCitations, model: config.mainModel, insufficient: generalInsufficient },
+    pricing: { query: pricingQuery, response: pricingText, citations: pricingCitations, model: config.targetedModel, insufficient: pricingInsufficient },
+    reviews: { query: reviewsQuery, response: reviewsText, citations: reviewsCitations, model: config.targetedModel, insufficient: reviewsInsufficient, citation_relevance: reviewsCitationRelevance },
+    competitors: { query: competitorsQuery, response: competitorsText, citations: competitorsCitations, model: config.targetedModel, insufficient: competitorsInsufficient },
+    company: { query: companyQuery, response: companyText, citations: companyCitations, model: config.targetedModel, insufficient: companyInsufficient },
+    community: { query: communityQuery, response: communityText, citations: communityCitations, model: config.targetedModel, insufficient: communityInsufficient },
   };
 
   const consolidationPrompt = prompts.buildConsolidationPrompt(tool, scrapeData, perplexityResults);
@@ -276,7 +327,29 @@ async function researchTool(tool, executionId, config, context) {
     gaps: consolidation.gaps?.length || 0, model: config.consolidationModel
   });
 
-  // Step 8: Store raw_research + trigger Analyst
+  // Step 6: Quality Gate — check if we have enough reliable data
+  await logStep(executionId, `quality_gate_${tool.slug}`, 'started');
+
+  const scraperWorked = !scrapeData.homepage?.error;
+  const generalNotInsufficient = !generalInsufficient;
+  const overallCitationRelevance = computeCitationRelevance([
+    ...generalCitations, ...pricingCitations, ...reviewsCitations,
+    ...competitorsCitations, ...companyCitations, ...communityCitations
+  ]);
+  const relevantCitations = overallCitationRelevance > 0.3;
+  const insufficientCount = [generalInsufficient, pricingInsufficient, reviewsInsufficient,
+    competitorsInsufficient, companyInsufficient, communityInsufficient].filter(Boolean).length;
+
+  const qualityChecks = { scraperWorked, generalNotInsufficient, relevantCitations };
+  const passedChecks = Object.values(qualityChecks).filter(Boolean).length;
+  const qualityPassed = passedChecks >= 2;
+
+  await logStep(executionId, `quality_gate_${tool.slug}`, 'completed', {
+    passed: qualityPassed, checks: qualityChecks, insufficientCount,
+    citationRelevance: overallCitationRelevance
+  });
+
+  // Step 7: Store raw_research
   await logStep(executionId, `store_${tool.slug}`, 'started');
 
   const rawResearch = {
@@ -287,11 +360,21 @@ async function researchTool(tool, executionId, config, context) {
     perplexity_pricing: perplexityResults.pricing,
     perplexity_reviews: perplexityResults.reviews,
     perplexity_competitors: perplexityResults.competitors,
+    perplexity_company: perplexityResults.company,
+    perplexity_community: perplexityResults.community,
     consolidation: {
       response: consolidation,
       gaps: consolidation.gaps || [],
       contradictions: consolidation.contradictions || [],
+      insufficient_queries: consolidation.insufficient_queries || [],
+      source_quality: consolidation.source_quality || {},
       model: config.consolidationModel
+    },
+    quality_gate: {
+      passed: qualityPassed,
+      checks: qualityChecks,
+      insufficient_count: insufficientCount,
+      citation_relevance: overallCitationRelevance,
     }
   };
 
@@ -303,35 +386,59 @@ async function researchTool(tool, executionId, config, context) {
     pageTitle: scrapeData.homepage?.title || '',
     description: scrapeData.homepage?.description || '',
     hasPricingPage: scrapeData.pricing_page?.found || false,
+    hasJsonLd: (scrapeData.json_ld?.length || 0) > 0,
+    sitemapUrls: scrapeData.sitemap_urls?.length || 0,
     scrapedAt: new Date().toISOString()
   };
 
+  // screenshot_url: OG image priority → Google favicon fallback
+  const screenshotUrl = scrapeData.homepage?.meta?.og_image
+    || `https://www.google.com/s2/favicons?domain=${new URL(tool.url).hostname}&sz=128`;
+
+  const updatePayload = {
+    raw_research: rawResearch,
+    research_sources: sourceTracker.toArray(),
+    research_version: rawResearch.version,
+    research_gaps: consolidation.gaps || [],
+    website_data: websiteData,
+    research_blob: generalText,
+    screenshot_url: screenshotUrl,
+    updated_at: new Date().toISOString()
+  };
+
+  if (qualityPassed) {
+    updatePayload.research_status = 'researched';
+    updatePayload.analysis_status = 'queued';
+  } else {
+    // Quality gate failed — don't auto-trigger analyst
+    updatePayload.research_status = 'researched';
+    updatePayload.analysis_status = 'needs_review';
+    updatePayload.research_gaps = [
+      ...(consolidation.gaps || []),
+      `QUALITY_GATE: Research data insufficient for automated analysis (passed ${passedChecks}/3 checks)`
+    ];
+    console.log(`[research] Quality gate FAILED for ${tool.name} — skipping analyst auto-trigger`);
+  }
+
   const { error: updateError } = await supabase
     .from('tools')
-    .update({
-      raw_research: rawResearch,
-      research_sources: sourceTracker.toArray(),
-      research_version: rawResearch.version,
-      research_gaps: consolidation.gaps || [],
-      website_data: websiteData,
-      research_blob: generalText,
-      research_status: 'researched',
-      analysis_status: 'queued',
-      updated_at: new Date().toISOString()
-    })
+    .update(updatePayload)
     .eq('id', tool.id);
 
   if (updateError) throw new Error(`Failed to update tool: ${updateError.message}`);
 
   await logStep(executionId, `store_${tool.slug}`, 'completed', {
     sources: sourceTracker.count,
-    research_version: rawResearch.version
+    research_version: rawResearch.version,
+    quality_gate: qualityPassed ? 'passed' : 'failed'
   });
 
-  console.log(`[research] Completed: ${tool.name} → researched (${sourceTracker.count} sources)`);
+  console.log(`[research] Completed: ${tool.name} → researched (${sourceTracker.count} sources, quality: ${qualityPassed ? 'PASS' : 'FAIL'})`);
 
-  // Chain to Analyst Agent
-  await triggerAnalyst(tool, executionId, context);
+  // Chain to Analyst Agent (only if quality gate passed)
+  if (qualityPassed) {
+    await triggerAnalyst(tool, executionId, context);
+  }
 }
 
 /**
