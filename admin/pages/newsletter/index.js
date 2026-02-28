@@ -41,13 +41,26 @@ export default function Newsletter() {
     loadSettings();
   }, []);
 
+  // Logical display order for newsletter config keys
+  const CONFIG_ORDER = [
+    'name', 'description', 'sender', 'audience', 'themes', 'tone',
+    'avoid', 'structure', 'subject_lines', 'cadence', 'links',
+  ];
+
   async function loadSettings() {
     setConfigLoading(true);
     try {
       const res = await fetch('/api/config?scope=agents/newsletter');
       if (res.ok) {
         const data = await res.json();
-        setSettings(data.map(s => ({ ...s, _original: s.value })));
+        const mapped = data.map(s => ({ ...s, _original: s.value }));
+        // Sort by CONFIG_ORDER, unknown keys go to end
+        mapped.sort((a, b) => {
+          const ai = CONFIG_ORDER.indexOf(a.key);
+          const bi = CONFIG_ORDER.indexOf(b.key);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
+        setSettings(mapped);
       }
     } catch (err) {
       console.error('Failed to load config:', err);
