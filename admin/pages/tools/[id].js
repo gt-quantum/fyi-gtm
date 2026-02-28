@@ -720,6 +720,9 @@ export default function ToolDetail() {
                 </div>
               )}
 
+              {/* AI Research Summary (Perplexity) — top-level readable summary */}
+              {tool.research_blob && <TextViewer title="AI Research Summary" text={tool.research_blob} />}
+
               {/* Research Gaps */}
               {tool.research_gaps && tool.research_gaps.length > 0 && (
                 <div style={{
@@ -795,9 +798,6 @@ export default function ToolDetail() {
 
               {/* Website Data */}
               {tool.website_data && <JsonViewer title="Scraped Website Data" data={tool.website_data} />}
-
-              {/* AI Research Summary (general Perplexity blob) */}
-              {tool.research_blob && <TextViewer title="AI Research Summary" text={tool.research_blob} />}
 
               {/* Research Sources */}
               {tool.research_sources && tool.research_sources.length > 0 && (
