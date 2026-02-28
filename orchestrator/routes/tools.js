@@ -86,7 +86,7 @@ router.put('/:id', async (req, res) => {
     'key_features', 'use_cases', 'recent_developments',
     'pros_cons', 'user_sentiment', 'ratings',
     'pricing_info', 'competitors', 'company_info',
-    'confidence_scores', 'research_gaps',
+    'confidence_scores', 'research_gaps', 'linkedin_data',
   ];
 
   const updates = {};

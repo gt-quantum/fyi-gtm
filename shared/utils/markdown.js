@@ -205,6 +205,54 @@ function escapeYaml(str) {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+/**
+ * Map a tools table row (snake_case) to Astro-compatible frontmatter (camelCase).
+ * This is the canonical tools → directory_entries.frontmatter mapping.
+ *
+ * @param {Object} tool - Row from tools table
+ * @returns {Object} Frontmatter JSONB ready for directory_entries
+ */
+function buildFrontmatterFromTool(tool) {
+  const fm = {};
+
+  // Required fields
+  fm.name = tool.name;
+  fm.description = tool.summary || tool.best_for || (tool.website_data?.description) || '';
+  fm.url = tool.url;
+  fm.primaryCategory = tool.primary_category || null;
+  fm.categories = Array.isArray(tool.categories) && tool.categories.length > 0
+    ? tool.categories
+    : (tool.primary_category ? [tool.primary_category] : []);
+  fm.publishedAt = new Date().toISOString();
+
+  // Logo: screenshot_url (OG image or favicon) → fallback to Google favicon
+  if (tool.screenshot_url) {
+    fm.logo = tool.screenshot_url;
+  } else if (tool.url) {
+    try {
+      fm.logo = `https://www.google.com/s2/favicons?domain=${new URL(tool.url).hostname}&sz=128`;
+    } catch { /* skip */ }
+  }
+
+  // Taxonomy arrays (snake_case → camelCase)
+  if (Array.isArray(tool.ai_automation) && tool.ai_automation.length > 0) fm.aiAutomation = tool.ai_automation;
+  if (Array.isArray(tool.pricing_tags) && tool.pricing_tags.length > 0) fm.pricingTags = tool.pricing_tags;
+  if (Array.isArray(tool.company_size) && tool.company_size.length > 0) fm.companySize = tool.company_size;
+  if (Array.isArray(tool.integrations) && tool.integrations.length > 0) fm.integrations = tool.integrations;
+
+  // Pricing
+  if (tool.pricing) fm.pricing = tool.pricing;
+  if (tool.price_note) fm.priceNote = tool.price_note;
+
+  // Meta
+  if (tool.featured) fm.featured = true;
+
+  // Upvotes from seed
+  if (tool.seed_upvotes) fm.upvotes = tool.seed_upvotes;
+
+  return fm;
+}
+
 module.exports = {
   generateFrontmatter,
   generateMarkdownFile,
@@ -212,6 +260,7 @@ module.exports = {
   slugify,
   validateFrontmatter,
   sanitizeFrontmatter,
+  buildFrontmatterFromTool,
   REQUIRED_FIELDS,
   ALLOWED_FIELDS,
 };

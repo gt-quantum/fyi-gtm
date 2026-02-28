@@ -395,14 +395,28 @@ async function researchTool(tool, executionId, config, context) {
   const screenshotUrl = scrapeData.homepage?.meta?.og_image
     || `https://www.google.com/s2/favicons?domain=${new URL(tool.url).hostname}&sz=128`;
 
+  // Build comprehensive research_blob from ALL query responses
+  const researchBlobSections = [
+    `=== GENERAL OVERVIEW ===\n${generalText}`,
+  ];
+  if (!pricingInsufficient && pricingText) researchBlobSections.push(`\n=== PRICING ===\n${pricingText}`);
+  if (!reviewsInsufficient && reviewsText) researchBlobSections.push(`\n=== REVIEWS & SENTIMENT ===\n${reviewsText}`);
+  if (!competitorsInsufficient && competitorsText) researchBlobSections.push(`\n=== COMPETITORS ===\n${competitorsText}`);
+  if (!companyInsufficient && companyText) researchBlobSections.push(`\n=== COMPANY & PEOPLE ===\n${companyText}`);
+  if (!communityInsufficient && communityText) researchBlobSections.push(`\n=== COMMUNITY & PRESS ===\n${communityText}`);
+
+  // Extract linkedin_data from company response
+  const linkedinData = extractLinkedInData(companyText, companyCitations);
+
   const updatePayload = {
     raw_research: rawResearch,
     research_sources: sourceTracker.toArray(),
     research_version: rawResearch.version,
     research_gaps: consolidation.gaps || [],
     website_data: websiteData,
-    research_blob: generalText,
+    research_blob: researchBlobSections.join('\n'),
     screenshot_url: screenshotUrl,
+    linkedin_data: linkedinData,
     updated_at: new Date().toISOString()
   };
 
@@ -439,6 +453,81 @@ async function researchTool(tool, executionId, config, context) {
   if (qualityPassed) {
     await triggerAnalyst(tool, executionId, context);
   }
+}
+
+/**
+ * Extract LinkedIn-specific data from the company sources response.
+ * Stores structured LinkedIn profile info in the dedicated linkedin_data column.
+ */
+function extractLinkedInData(companyText, companyCitations) {
+  if (!companyText) return null;
+
+  const data = {
+    extracted_at: new Date().toISOString(),
+  };
+
+  // Find LinkedIn URL from citations
+  const linkedinCitation = (companyCitations || []).find(c => {
+    try { return new URL(c).hostname.includes('linkedin.com'); } catch { return false; }
+  });
+  if (linkedinCitation) data.linkedin_url = linkedinCitation;
+
+  // Also try to find LinkedIn URL in the text
+  if (!data.linkedin_url) {
+    const urlMatch = companyText.match(/https?:\/\/(?:www\.)?linkedin\.com\/company\/[^\s),]+/i);
+    if (urlMatch) data.linkedin_url = urlMatch[0].replace(/[.,;)]+$/, '');
+  }
+
+  // Extract key data points mentioned in LinkedIn context
+  const lowerText = companyText.toLowerCase();
+  const linkedinSection = extractSection(companyText, 'linkedin');
+
+  if (linkedinSection) {
+    // Employee count
+    const empMatch = linkedinSection.match(/(\d[\d,]+)\s*(?:employees?|staff|team\s*members?)/i)
+      || linkedinSection.match(/employee\s*(?:count|range|size)?[:\s]*(\d[\d,\-+]+)/i);
+    if (empMatch) data.employee_count = empMatch[1].replace(/,/g, '');
+
+    // Headquarters
+    const hqMatch = linkedinSection.match(/(?:headquarter(?:s|ed)?|hq|based|location)[:\s]+([A-Z][^.\n,]{2,50})/i);
+    if (hqMatch) data.headquarters = hqMatch[1].trim();
+
+    // Industry
+    const indMatch = linkedinSection.match(/(?:industry|sector)[:\s]+([^.\n]{3,60})/i);
+    if (indMatch) data.industry = indMatch[1].trim();
+
+    // Founded
+    const foundMatch = linkedinSection.match(/(?:founded|established|started)[:\s]*(?:in\s+)?(\d{4})/i);
+    if (foundMatch) data.founded_year = parseInt(foundMatch[1]);
+  }
+
+  // If we found nothing useful, check if INSUFFICIENT_DATA
+  if (!data.linkedin_url && Object.keys(data).length <= 1) {
+    if (lowerText.includes('insufficient_data') || lowerText.includes('no profile') || lowerText.includes('no linkedin')) {
+      data.status = 'not_found';
+    }
+    return Object.keys(data).length <= 2 ? null : data;
+  }
+
+  data.status = 'found';
+  return data;
+}
+
+/**
+ * Extract a section of text related to a specific platform.
+ */
+function extractSection(text, platform) {
+  if (!text) return null;
+  // Try numbered sections first (e.g., "1. **LinkedIn**...")
+  const patterns = [
+    new RegExp(`\\d+\\.\\s*\\*{0,2}${platform}\\*{0,2}[^\\n]*\\n([\\s\\S]*?)(?=\\d+\\.\\s*\\*{0,2}|$)`, 'i'),
+    new RegExp(`${platform}[^\\n]*\\n([\\s\\S]*?)(?=\\n\\n|\\n\\d+\\.|$)`, 'i'),
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[0];
+  }
+  return null;
 }
 
 /**

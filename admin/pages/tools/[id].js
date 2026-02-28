@@ -39,6 +39,7 @@ export default function ToolDetail() {
   const [researching, setResearching] = useState(false);
   const [linkedIssues, setLinkedIssues] = useState([]);
   const [publishingEntry, setPublishingEntry] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
 
   // Basic info fields
@@ -811,7 +812,7 @@ export default function ToolDetail() {
 
               {/* Legacy data */}
               {tool.review_data && <JsonViewer title="Legacy Review Data" data={tool.review_data} />}
-              {tool.linkedin_data && <JsonViewer title="Legacy LinkedIn Data" data={tool.linkedin_data} />}
+              {tool.linkedin_data && <JsonViewer title={`LinkedIn Data${tool.linkedin_data.status === 'found' ? '' : ' (not found)'}`} data={tool.linkedin_data} />}
             </div>
           ) : (
             <EmptyState message="No research data available." detail="Trigger research to populate this tab." />
@@ -881,7 +882,41 @@ export default function ToolDetail() {
                 }} />
             </>
           ) : (
-            <EmptyState message="No directory entry yet." detail="Run the directory agent to generate content from research data." />
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <p style={{ color: colors.muted, marginBottom: 16 }}>No directory entry yet.</p>
+              <button onClick={async () => {
+                try {
+                  setGenerating(true);
+                  const res = await fetch('/api/directory/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ toolId: tool.id }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Failed to generate');
+                  setEntry(data);
+                  setEditContent(data.content || '');
+                } catch (err) {
+                  alert(`Generate failed: ${err.message}`);
+                } finally {
+                  setGenerating(false);
+                }
+              }} disabled={generating || !tool.primary_category}
+              style={{
+                padding: '10px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                background: tool.primary_category ? '#1e3a5f' : 'transparent',
+                color: tool.primary_category ? '#60a5fa' : colors.dim,
+                border: `1px solid ${tool.primary_category ? '#1e3a8a' : colors.border}`,
+                cursor: tool.primary_category ? 'pointer' : 'not-allowed',
+              }}>
+                {generating ? 'Generating...' : 'Generate Directory Entry from Tool Data'}
+              </button>
+              {!tool.primary_category && (
+                <p style={{ color: colors.dim, fontSize: 12, marginTop: 8 }}>
+                  Run Research + Analyst first to populate classification data.
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}

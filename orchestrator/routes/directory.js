@@ -156,4 +156,138 @@ router.post('/publish', async (req, res) => {
   }
 });
 
+// POST /api/directory/generate — Generate a directory entry from a tool's structured data
+// Maps tool fields (snake_case) → Astro frontmatter (camelCase)
+router.post('/generate', async (req, res) => {
+  const { toolId } = req.body;
+  if (!toolId) return res.status(400).json({ error: 'toolId is required' });
+
+  try {
+    // Fetch the tool with all structured data
+    const { data: tool, error: toolErr } = await supabase
+      .from('tools')
+      .select('*')
+      .eq('id', toolId)
+      .single();
+
+    if (toolErr || !tool) return res.status(404).json({ error: 'Tool not found' });
+
+    // Check if analysis is complete enough
+    if (!tool.primary_category) {
+      return res.status(400).json({
+        error: 'Tool missing primary_category — run analyst first',
+        analysis_status: tool.analysis_status,
+      });
+    }
+
+    // Check if entry already exists
+    const { data: existing } = await supabase
+      .from('directory_entries')
+      .select('id, status')
+      .eq('tool_id', toolId)
+      .single();
+
+    if (existing) {
+      return res.status(409).json({
+        error: 'Directory entry already exists',
+        entry_id: existing.id,
+        status: existing.status,
+      });
+    }
+
+    // Build frontmatter from tool fields
+    const { buildFrontmatterFromTool } = require('../../shared/utils/markdown');
+    const frontmatter = buildFrontmatterFromTool(tool);
+
+    // Validate the generated frontmatter
+    const validation = validateFrontmatter(frontmatter);
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: 'Generated frontmatter failed validation',
+        validationErrors: validation.errors,
+        frontmatter,
+      });
+    }
+
+    // Build placeholder content (Directory Writer agent will replace this)
+    const content = buildPlaceholderContent(tool);
+
+    // Create the directory entry
+    const { data: entry, error: insertErr } = await supabase
+      .from('directory_entries')
+      .insert({
+        tool_id: toolId,
+        frontmatter,
+        content,
+        status: 'draft',
+      })
+      .select()
+      .single();
+
+    if (insertErr) throw new Error(insertErr.message);
+
+    res.status(201).json(entry);
+  } catch (err) {
+    console.error('[directory] Generate failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Build placeholder review content from structured tool data.
+ * A proper Directory Writer agent would replace this with polished copy.
+ */
+function buildPlaceholderContent(tool) {
+  const sections = [];
+
+  if (tool.summary) sections.push(`${tool.summary}\n`);
+  if (tool.best_for) sections.push(`*${tool.best_for}*\n`);
+
+  // Key Features
+  if (tool.key_features?.length) {
+    sections.push('## Key Features\n');
+    for (const f of tool.key_features.slice(0, 8)) {
+      const name = f.name || f.feature || 'Feature';
+      const desc = f.description || '';
+      sections.push(`- **${name}**${desc ? ` — ${desc}` : ''}`);
+    }
+    sections.push('');
+  }
+
+  // Pricing
+  if (tool.pricing_info) {
+    sections.push('## Pricing\n');
+    if (tool.pricing_info.model) sections.push(`Pricing model: ${tool.pricing_info.model}`);
+    if (tool.pricing_info.tiers?.length) {
+      for (const tier of tool.pricing_info.tiers) {
+        const name = tier.name || 'Plan';
+        const price = tier.price || tier.amount || '';
+        sections.push(`- **${name}**${price ? `: ${price}` : ''}`);
+      }
+    }
+    if (tool.pricing_info.free_trial) sections.push(`\nFree trial: ${tool.pricing_info.free_trial}`);
+    sections.push('');
+  }
+
+  // Pros & Cons
+  if (tool.pros_cons?.pros?.length || tool.pros_cons?.cons?.length) {
+    sections.push('## Pros & Cons\n');
+    if (tool.pros_cons.pros?.length) {
+      sections.push('**Pros:**');
+      for (const p of tool.pros_cons.pros.slice(0, 5)) {
+        sections.push(`- ${typeof p === 'string' ? p : (p.text || p.description || JSON.stringify(p))}`);
+      }
+    }
+    if (tool.pros_cons.cons?.length) {
+      sections.push('\n**Cons:**');
+      for (const c of tool.pros_cons.cons.slice(0, 5)) {
+        sections.push(`- ${typeof c === 'string' ? c : (c.text || c.description || JSON.stringify(c))}`);
+      }
+    }
+    sections.push('');
+  }
+
+  return sections.join('\n') || `Review of ${tool.name} — content pending.`;
+}
+
 module.exports = router;
