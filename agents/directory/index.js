@@ -23,7 +23,7 @@ module.exports = {
   name: 'Directory Writer',
   description: 'Writes polished tool reviews using Sonnet from structured research data',
   type: 'agent',
-  schedule: 'manual',
+  schedule: 'triggered',
   enabled: true,
   tags: ['directory', 'writing'],
   runtime: 'railway',

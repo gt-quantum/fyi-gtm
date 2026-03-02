@@ -20,6 +20,7 @@ export default function Tools() {
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [publishing, setPublishing] = useState(false);
+  const [researching, setResearching] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
 
   // Multi-select filters
@@ -83,11 +84,35 @@ export default function Tools() {
 
   function handleSelectAll(checked) {
     if (checked) {
-      const publishable = filtered.filter(t => t.entry_id).map(t => t.id);
-      setSelectedIds(new Set(publishable));
+      setSelectedIds(new Set(filtered.map(t => t.id)));
     } else {
       setSelectedIds(new Set());
     }
+  }
+
+  async function handleBulkResearch() {
+    const toolIds = [...selectedIds];
+    if (toolIds.length === 0) return;
+    setResearching(true);
+    setPublishResult(null);
+    try {
+      const res = await fetch('/api/tools/research-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toolIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPublishResult({ ok: true, message: `Research queued for ${data.count} tool(s). Pipeline will run in background.` });
+        setSelectedIds(new Set());
+        setTimeout(loadTools, 3000);
+      } else {
+        setPublishResult({ ok: false, message: data.error });
+      }
+    } catch (err) {
+      setPublishResult({ ok: false, message: err.message });
+    }
+    setResearching(false);
   }
 
   async function handleBulkPublish() {
@@ -198,9 +223,14 @@ export default function Tools() {
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>Tools</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           {selectedIds.size > 0 && (
-            <button onClick={handleBulkPublish} disabled={publishing} style={publishBtnStyle}>
-              {publishing ? 'Publishing...' : `Publish ${selectedIds.size} to GitHub`}
-            </button>
+            <>
+              <button onClick={handleBulkResearch} disabled={researching} style={researchBtnStyle}>
+                {researching ? 'Queuing...' : `Research ${selectedIds.size}`}
+              </button>
+              <button onClick={handleBulkPublish} disabled={publishing} style={publishBtnStyle}>
+                {publishing ? 'Publishing...' : `Publish ${selectedIds.size} to GitHub`}
+              </button>
+            </>
           )}
           <button onClick={() => setShowAdd(true)} style={primaryBtnStyle}>+ Add Tool</button>
         </div>
@@ -422,6 +452,11 @@ function MultiSelectDropdown({ label, selected, onChange, options }) {
 const primaryBtnStyle = {
   padding: '7px 16px', border: '1px solid #3b82f6', borderRadius: 6,
   background: '#3b82f6', color: 'white', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+};
+
+const researchBtnStyle = {
+  padding: '7px 16px', border: '1px solid #164e63', borderRadius: 6,
+  background: '#082f49', color: '#22d3ee', fontSize: 13, fontWeight: 500, cursor: 'pointer',
 };
 
 const publishBtnStyle = {

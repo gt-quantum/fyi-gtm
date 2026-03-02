@@ -108,6 +108,61 @@ router.put('/:id', async (req, res) => {
   res.json(data);
 });
 
+// Bulk trigger research for multiple tools
+router.post('/research/bulk', async (req, res) => {
+  const { toolIds } = req.body;
+  if (!Array.isArray(toolIds) || toolIds.length === 0) {
+    return res.status(400).json({ error: 'toolIds array is required' });
+  }
+
+  try {
+    // Set all to queued
+    const { error: updateErr } = await supabase
+      .from('tools')
+      .update({ research_status: 'queued', updated_at: new Date().toISOString() })
+      .in('id', toolIds);
+
+    if (updateErr) throw new Error(updateErr.message);
+
+    const automations = req.app.locals.automations || [];
+    const researchAgent = automations.find(a => a.id === 'agents/research');
+    if (!researchAgent) {
+      return res.status(500).json({ error: 'Research agent not discovered.' });
+    }
+
+    const { createExecution, completeExecution } = require('../logger');
+
+    // Respond immediately
+    res.json({ success: true, count: toolIds.length });
+
+    // Process each tool sequentially in background
+    (async () => {
+      for (const toolId of toolIds) {
+        try {
+          const execution = await createExecution(researchAgent.id);
+          console.log(`[tools] Bulk research: starting ${toolId}`);
+          const result = await researchAgent._module.execute({
+            executionId: execution.id,
+            trigger: 'api',
+            runtime: 'railway',
+            toolId,
+            automations,
+          });
+          await completeExecution(execution.id, 'success', null, result);
+        } catch (err) {
+          console.error(`[tools] Bulk research failed for ${toolId}:`, err.message);
+        }
+      }
+      console.log(`[tools] Bulk research complete: ${toolIds.length} tools`);
+    })();
+  } catch (err) {
+    console.error('[tools] Bulk research trigger error:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
 // Trigger research for a specific tool
 router.post('/:id/research', async (req, res) => {
   try {
